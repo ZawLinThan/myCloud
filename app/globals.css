@@ -1,26 +1,113 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8fb;
+  --foreground: #101828;
+  --surface: #ffffff;
+  --surface-soft: #eef5ff;
+  --border: #dde5f0;
+  --muted: #667085;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: #dbeafe;
+  --success: #12b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-green: #3dd9b3;
+  --color-red: #ff7474;
+  --color-error: #b80000;
+  --color-blue: #56b8ff;
+  --color-pink: #eea8fd;
+  --color-orange: #f9ab72;
+
+  /* Light theme colors */
+  --color-light-100: #333f4e;
+  --color-light-200: #a3b2c7;
+  --color-light-300: #f2f5f9;
+  --color-light-400: #f2f4f8;
+
+  /* Dark theme colors */
+  --color-dark-100: #04050c;
+  --color-dark-200: #131524;
+
+  /* Font families */
+  --font-app-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  --font-app-mono:
+    'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+
+  /* Box shadows */
+  --shadow-drop-1: 0px 10px 30px 0px rgba(66, 71, 97, 0.1);
+  --shadow-drop-2: 0 8px 30px 0 rgba(65, 89, 214, 0.3);
+  --shadow-drop-3: 0 18px 50px 0 rgba(15, 23, 42, 0.12);
+
+  /* Border radius */
+  --radius-lg: 8px;
+  --radius-md: 6px;
+  --radius-sm: 4px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[data-theme='dark'] {
+  --background: #080b12;
+  --foreground: #f4f7fb;
+  --surface: #111827;
+  --surface-soft: #172033;
+  --border: #263244;
+  --muted: #9aa6b8;
+  --accent: #60a5fa;
+  --accent-strong: #93c5fd;
+  --accent-soft: #16253d;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-app-sans);
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer utilities {
+  .app-shell {
+    background:
+      radial-gradient(
+        circle at top left,
+        rgba(37, 99, 235, 0.14),
+        transparent 32rem
+      ),
+      linear-gradient(180deg, var(--background) 0%, var(--surface-soft) 100%);
+  }
+
+  .surface {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+
+  .text-muted {
+    color: var(--muted);
+  }
+
+  .text-app {
+    color: var(--foreground);
+  }
+
+  .bg-accent {
+    background: var(--accent);
+  }
+
+  .text-accent {
+    color: var(--accent);
+  }
+
+  .border-app {
+    border-color: var(--border);
+  }
 }
