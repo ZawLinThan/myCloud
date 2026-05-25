@@ -23,22 +23,25 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    files: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'File',
-        default: [],
-      },
-    ],
-    // files: {
-    //     type: [
-    //         {
-    //             type: mongoose.Schema.Types.ObjectId,
-    //             ref: "File",
-    //         },
-    //     ],
-    //     default: [],
-    // }
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otpHash: {
+      type: String,
+    },
+    otpExpiresAt: {
+      type: Date,
+    },
+    files: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'File',
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

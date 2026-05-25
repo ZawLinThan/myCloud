@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
@@ -12,7 +13,7 @@ import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import AuthSubmitButton from './AuthSubmitButton';
 import ErrorMessage from './ErrorMessage';
 import { AuthFormValues, authFormSchema } from '@/lib/validations/authForm';
-import { signUp } from '@/lib/actions/user.actions';
+import { signUp, signIn, verifySignUpOtp } from '@/lib/actions/user.actions';
 
 interface AuthFormProps {
   type: 'sign-in' | 'sign-up';
@@ -60,16 +61,31 @@ const AuthForm = ({ type }: AuthFormProps) => {
   const bottomLinkHref = isSignIn ? '/sign-up' : '/sign-in';
 
   const [backendErrorMsg, setBackendErrorMsg] = useState('');
+  const [backendSuccessMsg, setBackendSuccessMsg] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const router = useRouter();
 
   const onSubmit = async (data: AuthFormValues) => {
     setBackendErrorMsg('');
+    setBackendSuccessMsg('');
 
     await new Promise((resolve) => setTimeout(resolve, 800));
-    console.log(data);
 
     if (isSignIn) {
+      const result = await signIn({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (!result.success) {
+        setBackendErrorMsg(result.message);
+      } else {
+        setBackendSuccessMsg(result.message);
+      }
     } else {
-      // need to refine the fullName check to prevent null
+      // For sign-up, we need to ensure fullName is provided before calling the API
       if (!data.fullName) {
         throw new Error('Full name is required');
       }
@@ -82,9 +98,81 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
       if (!result.success) {
         setBackendErrorMsg(result.message);
+      } else {
+        setPendingEmail(data.email);
+        setBackendSuccessMsg(result.message);
       }
     }
   };
+
+  const handleVerifyOtp = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBackendErrorMsg('');
+    setBackendSuccessMsg('');
+    setIsVerifyingOtp(true);
+
+    try {
+      const result = await verifySignUpOtp({
+        email: pendingEmail,
+        otp,
+      });
+
+      if (!result.success) {
+        setBackendErrorMsg(result.message);
+      } else {
+        setBackendSuccessMsg(result.message);
+        router.push('/');
+      }
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  if (!isSignIn && pendingEmail) {
+    return (
+      <div className="w-full max-w-sm">
+        <div>
+          <p className="text-sm font-semibold text-accent">Verify email</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-app">
+            Enter your code
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            We sent a 6-digit verification code to {pendingEmail}.
+          </p>
+        </div>
+
+        <form className="mt-8 space-y-4" onSubmit={handleVerifyOtp}>
+          <label className="block">
+            <span className="text-sm font-medium text-app">
+              Verification code
+            </span>
+            <span className="mt-2 flex items-center gap-2 rounded-md border border-app bg-[var(--surface-soft)] px-3 py-3 text-muted">
+              <input
+                className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={(event) => setOtp(event.target.value)}
+                placeholder="123456"
+                type="text"
+                value={otp}
+              />
+            </span>
+          </label>
+
+          <AuthSubmitButton
+            isLoading={isVerifyingOtp}
+            loadingText="Verifying..."
+            text="Verify account"
+          />
+        </form>
+
+        {backendErrorMsg && <ErrorMessage message={backendErrorMsg} />}
+        {backendSuccessMsg && (
+          <p className="mt-4 text-sm text-emerald-600">{backendSuccessMsg}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-sm">
@@ -153,6 +241,11 @@ const AuthForm = ({ type }: AuthFormProps) => {
       </form>
 
       {backendErrorMsg && <ErrorMessage message={backendErrorMsg} />}
+
+      {/*success message may be unnecessary*/}
+      {backendSuccessMsg && (
+        <p className="mt-4 text-sm text-emerald-600">{backendSuccessMsg}</p>
+      )}
 
       <p className="mt-6 text-center text-sm text-muted">
         {bottomText}
