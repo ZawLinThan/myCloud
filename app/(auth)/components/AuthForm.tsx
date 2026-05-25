@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
@@ -10,7 +11,8 @@ import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 
 import AuthSubmitButton from './AuthSubmitButton';
 import ErrorMessage from './ErrorMessage';
-import { AuthFormValues, authFormSchema } from '@/app/lib/validations/auth';
+import { AuthFormValues, authFormSchema } from '@/lib/validations/authForm';
+import { signUp } from '@/lib/actions/user.actions';
 
 interface AuthFormProps {
   type: 'sign-in' | 'sign-up';
@@ -57,9 +59,31 @@ const AuthForm = ({ type }: AuthFormProps) => {
   const bottomLinkText = isSignIn ? 'Sign up' : 'Sign in';
   const bottomLinkHref = isSignIn ? '/sign-up' : '/sign-in';
 
+  const [backendErrorMsg, setBackendErrorMsg] = useState('');
+
   const onSubmit = async (data: AuthFormValues) => {
+    setBackendErrorMsg('');
+
     await new Promise((resolve) => setTimeout(resolve, 800));
     console.log(data);
+
+    if (isSignIn) {
+    } else {
+      // need to refine the fullName check to prevent null
+      if (!data.fullName) {
+        throw new Error('Full name is required');
+      }
+
+      const result = await signUp({
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+      });
+
+      if (!result.success) {
+        setBackendErrorMsg(result.message);
+      }
+    }
   };
 
   return (
@@ -127,6 +151,8 @@ const AuthForm = ({ type }: AuthFormProps) => {
           text={text}
         />
       </form>
+
+      {backendErrorMsg && <ErrorMessage message={backendErrorMsg} />}
 
       <p className="mt-6 text-center text-sm text-muted">
         {bottomText}
