@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema(
     otpExpiresAt: {
       type: Date,
     },
+    deleteAt: {
+      type: Date,
+      default: null,
+    },
     files: {
       type: [
         {
@@ -51,5 +55,7 @@ if (process.env.NODE_ENV !== 'production' && mongoose.models.User) {
 }
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
+
+userSchema.index({ deleteAt: 1 }, { expireAfterSeconds: 0 });
 
 export default User;

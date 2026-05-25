@@ -27,7 +27,7 @@ export const signUp = async ({
 
     const existingUser = await User.findOne({ email });
 
-    if (existingUser?.isVerified) {
+    if (existingUser) {
       return {
         success: false,
         message:
@@ -42,26 +42,16 @@ export const signUp = async ({
     const otp = generateOtp();
     const otpHash = await hashOtp(otp);
 
-    const newUser = existingUser
-      ? await User.findByIdAndUpdate(
-          existingUser._id,
-          {
-            fullName,
-            password: hashedPassword,
-            otpHash,
-            otpExpiresAt: getOtpExpiry(),
-          },
-          { new: true }
-        )
-      : await User.create({
-          fullName,
-          email,
-          accountId,
-          password: hashedPassword,
-          isVerified: false,
-          otpHash,
-          otpExpiresAt: getOtpExpiry(),
-        });
+    const newUser = await User.create({
+      fullName,
+      email,
+      accountId,
+      password: hashedPassword,
+      isVerified: false,
+      otpHash,
+      otpExpiresAt: getOtpExpiry(),
+      deleteAt: new Date(Date.now() + 60 * 60 * 1000), // Set deleteAt to 1 hour from now
+    });
 
     if (!newUser) {
       return {
@@ -125,7 +115,7 @@ export const verifySignUpOtp = async ({
     if (user.isVerified) {
       return {
         success: false,
-        message: 'This account is already verified. Sign in instead.',
+        message: 'ser with this email already exists! Sign In to your account.',
       };
     }
 
@@ -211,13 +201,6 @@ export const signIn = async ({
         message: 'Invalid credential.',
       };
 
-    if (!user.isVerified) {
-      return {
-        success: false,
-        message: 'Please verify your email before signing in.',
-      };
-    }
-
     await generateTokenAndSetCookie({
       userId: user._id.toString(),
       email: email,
@@ -225,7 +208,7 @@ export const signIn = async ({
 
     return {
       success: true,
-      message: 'User created successfully',
+      message: 'Signed in successfully',
       user: {
         _id: user._id.toString(),
         fullName: user.fullName,

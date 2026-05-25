@@ -83,6 +83,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
         setBackendErrorMsg(result.message);
       } else {
         setBackendSuccessMsg(result.message);
+        router.push('/');
       }
     } else {
       // For sign-up, we need to ensure fullName is provided before calling the API
