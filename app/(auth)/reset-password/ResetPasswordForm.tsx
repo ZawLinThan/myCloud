@@ -8,7 +8,7 @@ import AuthSubmitButton from '../components/AuthSubmitButton';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import ErrorMessage from '../../../components/ErrorMessage';
 import SuccessMessage from '@/components/SuccessMessage';
-import { signIn } from '@/lib/actions/user.actions';
+import { resetPassword } from '@/lib/actions/user.actions';
 
 type ResetPasswordFormProps = {
   email: string;
@@ -49,7 +49,7 @@ export default function ResetPasswordForm({ email }: ResetPasswordFormProps) {
     }
 
     setSuccessMessage('Password is ready to update.');
-    const connection = await signIn({ email, password });
+    const connection = await resetPassword({ email, password });
 
     if (!connection.success) {
       setErrorMessage(connection.message);

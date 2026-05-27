@@ -7,6 +7,7 @@ import { generateTokenAndSetCookie } from '../utils/generateToken';
 import { cookies } from 'next/headers';
 import { serializeAuthUser } from '../utils/authUser';
 import otpService from '../utils/otp';
+import hashingService from '../utils/hashing';
 
 export const signUp = async ({
   fullName,
@@ -254,6 +255,48 @@ export const resendOtp = async ({
   }
 };
 
+export const resetPassword = async ({
+  email,
+  password,
+}: {
+  email: string;
+  password: string;
+}) => {
+  try {
+    await connectDB();
+
+    const user = await User.findOne({ email });
+
+    if (!user)
+      return {
+        success: false,
+        message:
+          'No user associated with this email. Sign Up to start using MyCloud!',
+      };
+
+    const hashedPassword = await hashingService.hash(password);
+    user.password = hashedPassword;
+    await user.save();
+
+    await generateTokenAndSetCookie({
+      userId: user._id.toString(),
+      email: user.email,
+    });
+
+    return {
+      success: true,
+      message: 'Password reset successfullly.',
+      user: serializeAuthUser(user),
+    };
+  } catch (error: unknown) {
+    console.error('Password reset error', error);
+
+    return {
+      success: false,
+      message: 'Failed to reset password.',
+    };
+  }
+};
 export const signIn = async ({
   email,
   password,
