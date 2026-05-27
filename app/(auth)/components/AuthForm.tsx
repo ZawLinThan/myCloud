@@ -11,30 +11,10 @@ import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 
 import AuthSubmitButton from './AuthSubmitButton';
-import ErrorMessage from './ErrorMessage';
-import { AuthFormValues, authFormSchema } from '@/lib/validations/authForm';
-import { signUp, signIn, verifySignUpOtp } from '@/lib/actions/user.actions';
-
-interface AuthFormProps {
-  type: 'sign-in' | 'sign-up';
-}
-
-const getDefaultValues = (type: AuthFormProps['type']): AuthFormValues => {
-  if (type === 'sign-in') {
-    return {
-      type,
-      email: '',
-      password: '',
-    };
-  }
-
-  return {
-    type,
-    email: '',
-    password: '',
-    fullName: '',
-  };
-};
+import ErrorMessage from '../../../components/ErrorMessage';
+import { AuthFormProps, AuthFormValues, authFormSchema } from '../types';
+import { signIn, signUp } from '@/lib/actions/user.actions';
+import { getAuthFormContent, getDefaultValues } from '../utils/authForm.util';
 
 const AuthForm = ({ type }: AuthFormProps) => {
   const isSignIn = type === 'sign-in';
@@ -46,27 +26,13 @@ const AuthForm = ({ type }: AuthFormProps) => {
     defaultValues: getDefaultValues(type),
     resolver: zodResolver(authFormSchema),
   });
-
-  const title = isSignIn ? 'Sign in to MyCloud' : 'Start using MyCloud';
-  const subtitle = isSignIn
-    ? 'Access your files, shared folders, and recent uploads.'
-    : 'Set up your account and organize files for yourself or your team.';
-  const eyebrow = isSignIn ? 'Welcome back' : 'Create workspace';
-  const text = isSignIn ? 'Sign in' : 'Create account';
-  const loadingText = isSignIn ? 'Signing in...' : 'Creating account...';
-  const bottomText = isSignIn
-    ? "Don't have an account? "
-    : 'Already have an account? ';
-  const bottomLinkText = isSignIn ? 'Sign up' : 'Sign in';
-  const bottomLinkHref = isSignIn ? '/sign-up' : '/sign-in';
+  const formContent = getAuthFormContent(type);
 
   const [backendErrorMsg, setBackendErrorMsg] = useState('');
   const [backendSuccessMsg, setBackendSuccessMsg] = useState('');
-  const [pendingEmail, setPendingEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const router = useRouter();
 
+  // Submit handler for both sign-in and sign-up forms.
   const onSubmit = async (data: AuthFormValues) => {
     setBackendErrorMsg('');
     setBackendSuccessMsg('');
@@ -83,10 +49,9 @@ const AuthForm = ({ type }: AuthFormProps) => {
         setBackendErrorMsg(result.message);
       } else {
         setBackendSuccessMsg(result.message);
-        router.push('/');
+        router.replace('/dashboard');
       }
     } else {
-      // For sign-up, we need to ensure fullName is provided before calling the API
       if (!data.fullName) {
         throw new Error('Full name is required');
       }
@@ -100,89 +65,26 @@ const AuthForm = ({ type }: AuthFormProps) => {
       if (!result.success) {
         setBackendErrorMsg(result.message);
       } else {
-        setPendingEmail(data.email);
         setBackendSuccessMsg(result.message);
+        router.replace(
+          `/verify-otp?flow=sign-up&email=${encodeURIComponent(data.email)}`
+        );
       }
     }
   };
-
-  const handleVerifyOtp = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setBackendErrorMsg('');
-    setBackendSuccessMsg('');
-    setIsVerifyingOtp(true);
-
-    try {
-      const result = await verifySignUpOtp({
-        email: pendingEmail,
-        otp,
-      });
-
-      if (!result.success) {
-        setBackendErrorMsg(result.message);
-      } else {
-        setBackendSuccessMsg(result.message);
-        router.push('/');
-      }
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
-
-  if (!isSignIn && pendingEmail) {
-    return (
-      <div className="w-full max-w-sm">
-        <div>
-          <p className="text-sm font-semibold text-accent">Verify email</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-app">
-            Enter your code
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            We sent a 6-digit verification code to {pendingEmail}.
-          </p>
-        </div>
-
-        <form className="mt-8 space-y-4" onSubmit={handleVerifyOtp}>
-          <label className="block">
-            <span className="text-sm font-medium text-app">
-              Verification code
-            </span>
-            <span className="mt-2 flex items-center gap-2 rounded-md border border-app bg-[var(--surface-soft)] px-3 py-3 text-muted">
-              <input
-                className="w-full bg-transparent text-sm text-app outline-none placeholder:text-muted"
-                inputMode="numeric"
-                maxLength={6}
-                onChange={(event) => setOtp(event.target.value)}
-                placeholder="123456"
-                type="text"
-                value={otp}
-              />
-            </span>
-          </label>
-
-          <AuthSubmitButton
-            isLoading={isVerifyingOtp}
-            loadingText="Verifying..."
-            text="Verify account"
-          />
-        </form>
-
-        {backendErrorMsg && <ErrorMessage message={backendErrorMsg} />}
-        {backendSuccessMsg && (
-          <p className="mt-4 text-sm text-emerald-600">{backendSuccessMsg}</p>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-sm">
       <div>
-        <p className="text-sm font-semibold text-accent">{eyebrow}</p>
+        <p className="text-sm font-semibold text-accent">
+          {formContent.eyebrow}
+        </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-app">
-          {title}
+          {formContent.title}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-muted">{subtitle}</p>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          {formContent.subtitle}
+        </p>
       </div>
 
       <form className="mt-8 space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -236,24 +138,34 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
         <AuthSubmitButton
           isLoading={isSubmitting}
-          loadingText={loadingText}
-          text={text}
+          loadingText={formContent.loadingText}
+          text={formContent.submitText}
         />
       </form>
 
       {backendErrorMsg && <ErrorMessage message={backendErrorMsg} />}
 
-      {/*success message may be unnecessary*/}
       {backendSuccessMsg && (
         <p className="mt-4 text-sm text-emerald-600">{backendSuccessMsg}</p>
       )}
 
       <p className="mt-6 text-center text-sm text-muted">
-        {bottomText}
-        <Link href={bottomLinkHref} className="font-semibold text-accent">
-          {bottomLinkText}
+        {formContent.bottomText}
+        <Link
+          href={formContent.bottomLinkHref}
+          className="font-semibold text-accent"
+        >
+          {formContent.bottomLinkText}
         </Link>
       </p>
+      {isSignIn && (
+        <Link
+          href="/recover-password"
+          className="mt-4 block text-center text-sm font-semibold text-accent hover:underline"
+        >
+          Forgot password?
+        </Link>
+      )}
     </div>
   );
 };

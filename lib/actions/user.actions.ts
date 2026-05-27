@@ -5,13 +5,8 @@ import { connectDB } from '../mongoDB/db';
 import User from '@/models/user.model';
 import { generateTokenAndSetCookie } from '../utils/generateToken';
 import { cookies } from 'next/headers';
-import {
-  generateOtp,
-  getOtpExpiry,
-  hashOtp,
-  sendOtpEmail,
-  verifyOtpHash,
-} from '../utils/otp';
+import { serializeAuthUser } from '../utils/authUser';
+import otpService from '../utils/otp';
 
 export const signUp = async ({
   fullName,
@@ -27,7 +22,7 @@ export const signUp = async ({
 
     const existingUser = await User.findOne({ email });
 
-    if (existingUser) {
+    if (existingUser?.isVerified) {
       return {
         success: false,
         message:
@@ -35,12 +30,14 @@ export const signUp = async ({
       };
     }
 
+    // remove pending account that didn't pass OTP verification
+    if (existingUser && !existingUser.isVerified) {
+      await User.deleteOne({ _id: existingUser._id });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const accountId = crypto.randomUUID();
-
-    const otp = generateOtp();
-    const otpHash = await hashOtp(otp);
 
     const newUser = await User.create({
       fullName,
@@ -48,9 +45,6 @@ export const signUp = async ({
       accountId,
       password: hashedPassword,
       isVerified: false,
-      otpHash,
-      otpExpiresAt: getOtpExpiry(),
-      deleteAt: new Date(Date.now() + 60 * 60 * 1000), // Set deleteAt to 1 hour from now
     });
 
     if (!newUser) {
@@ -60,7 +54,9 @@ export const signUp = async ({
       };
     }
 
-    const otpConnection = await sendOtpEmail({ email: newUser.email, otp });
+    const otpConnection = await otpService.issueOtp(newUser, {
+      expirePendingUser: true,
+    });
 
     if (otpConnection.success) {
       return {
@@ -68,14 +64,7 @@ export const signUp = async ({
         requiresOtp: true,
         message:
           'Verification code sent. Check your email to finish signing up.',
-        user: {
-          _id: newUser._id.toString(),
-          fullName: newUser.fullName,
-          email: newUser.email,
-          accountId: newUser.accountId,
-          avatar: newUser.avatar ?? null,
-          files: [],
-        },
+        user: serializeAuthUser(newUser),
       };
     } else {
       return {
@@ -93,47 +82,63 @@ export const signUp = async ({
   }
 };
 
-export const verifySignUpOtp = async ({
+export const verifyOtp = async ({
   email,
   otp,
+  type,
 }: {
   email: string;
   otp: string;
+  type: 'sign-up' | 'recovery';
 }) => {
   try {
     await connectDB();
 
     const user = await User.findOne({ email });
+    const isSignUp = type === 'sign-up';
+    const signUpOrRecoveryText = isSignUp
+      ? 'sign up again'
+      : 'request a new code';
 
-    if (!user) {
-      return {
-        success: false,
-        message: 'No pending account found for this email.',
-      };
-    }
+    if (isSignUp) {
+      if (!user) {
+        return {
+          success: false,
+          message: 'No pending account found for this email.',
+        };
+      }
 
-    if (user.isVerified) {
-      return {
-        success: false,
-        message: 'ser with this email already exists! Sign In to your account.',
-      };
+      if (user.isVerified) {
+        return {
+          success: false,
+          message:
+            'User with this email already exists! Sign In to your account.',
+        };
+      }
+    } else {
+      if (!user?.isVerified) {
+        return {
+          success: false,
+          message: 'No verified account found for this email.',
+        };
+      }
     }
 
     if (!user.otpHash || !user.otpExpiresAt) {
       return {
         success: false,
-        message: 'No verification code found. Please sign up again.',
+        message: `No verification code found. Please ${signUpOrRecoveryText}`,
       };
     }
 
     if (user.otpExpiresAt.getTime() < Date.now()) {
       return {
         success: false,
-        message: 'Verification code expired. Please sign up again.',
+        message: `Verification code expired. Please ${signUpOrRecoveryText}`,
       };
     }
 
-    const isOtpValid = await verifyOtpHash(otp, user.otpHash);
+    const isOtpValid = await otpService.verifyOtpHash(otp, user.otpHash);
 
     if (!isOtpValid) {
       return {
@@ -142,9 +147,10 @@ export const verifySignUpOtp = async ({
       };
     }
 
-    user.isVerified = true;
+    user.isVerified = true; // not needed for recovery
     user.otpHash = undefined;
     user.otpExpiresAt = undefined;
+    user.deleteAt = null; // not needed for recovery
     await user.save();
 
     await generateTokenAndSetCookie({
@@ -155,14 +161,7 @@ export const verifySignUpOtp = async ({
     return {
       success: true,
       message: 'Account verified successfully.',
-      user: {
-        _id: user._id.toString(),
-        fullName: user.fullName,
-        email: user.email,
-        accountId: user.accountId,
-        avatar: user.avatar ?? null,
-        files: [],
-      },
+      user: serializeAuthUser(user),
     };
   } catch (error: unknown) {
     console.error('Verify OTP error:', error);
@@ -170,6 +169,87 @@ export const verifySignUpOtp = async ({
     return {
       success: false,
       message: 'Failed to verify code.',
+    };
+  }
+};
+
+export const resendOtp = async ({
+  email,
+  type,
+}: {
+  email: string;
+  type: 'sign-up' | 'recovery';
+}) => {
+  try {
+    await connectDB();
+
+    const user = await User.findOne({ email });
+    const isSignUp = type === 'sign-up';
+
+    if (!user) {
+      return {
+        success: false,
+        message: isSignUp
+          ? 'No pending account found for this email.'
+          : 'No account associated with this email.',
+      };
+    }
+
+    if (isSignUp) {
+      if (user.isVerified) {
+        return {
+          success: false,
+          message: 'This account is already verified. Sign in instead.',
+        };
+      }
+    } else {
+      if (!user.isVerified) {
+        return {
+          success: false,
+          message:
+            'Please verify your account before recovering your password.',
+        };
+      }
+    }
+
+    const otpConnection = await otpService.issueOtp(user, {
+      expirePendingUser: isSignUp,
+    });
+
+    if (!otpConnection.success) {
+      return {
+        success: false,
+        message: otpConnection.message,
+      };
+    }
+
+    if (isSignUp) {
+      return {
+        success: true,
+        message: 'A new verification code was sent.',
+      };
+    } else {
+      return {
+        success: true,
+        requiresOtp: true,
+        message: 'Verification code sent. Check your email to continue.',
+        user: serializeAuthUser(user),
+      };
+    }
+  } catch (error: unknown) {
+    const isSignUp = type === 'sign-up';
+
+    if (isSignUp) {
+      console.error('Resend OTP error:', error);
+    } else {
+      console.error('Password recovery error:', error);
+    }
+
+    return {
+      success: false,
+      message: isSignUp
+        ? 'Failed to resend verification code.'
+        : 'Failed to start password recovery.',
     };
   }
 };
@@ -201,6 +281,18 @@ export const signIn = async ({
         message: 'Invalid credential.',
       };
 
+    if (!user.isVerified) {
+      return {
+        success: false,
+        message: 'Please verify your email before signing in.',
+      };
+    }
+
+    if (user.deleteAt) {
+      user.deleteAt = null;
+      await user.save();
+    }
+
     await generateTokenAndSetCookie({
       userId: user._id.toString(),
       email: email,
@@ -209,14 +301,7 @@ export const signIn = async ({
     return {
       success: true,
       message: 'Signed in successfully',
-      user: {
-        _id: user._id.toString(),
-        fullName: user.fullName,
-        email: user.email,
-        accountId: user.accountId,
-        avatar: user.avatar ?? null,
-        files: [],
-      },
+      user: serializeAuthUser(user),
     };
   } catch {
     return {

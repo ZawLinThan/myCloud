@@ -21,3 +21,7 @@ export const authFormSchema = z
   });
 
 export type AuthFormValues = z.infer<typeof authFormSchema>;
+
+export interface AuthFormProps {
+  type: 'sign-in' | 'sign-up';
+}

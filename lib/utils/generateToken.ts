@@ -6,7 +6,7 @@ type TokenPayload = {
   email?: string;
 };
 
-const SESSION_COOKIE_NAME = 'session-token';
+export const SESSION_COOKIE_NAME = 'session-token';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 
 const getJwtSecret = () => {
@@ -23,6 +23,23 @@ export const generateToken = (payload: TokenPayload) => {
   return jwt.sign(payload, getJwtSecret(), {
     expiresIn: '7d',
   });
+};
+
+export const verifyToken = (token: string): TokenPayload | null => {
+  try {
+    const payload = jwt.verify(token, getJwtSecret());
+
+    if (typeof payload === 'string' || typeof payload.userId !== 'string') {
+      return null;
+    }
+
+    return {
+      userId: payload.userId,
+      email: typeof payload.email === 'string' ? payload.email : undefined,
+    };
+  } catch {
+    return null;
+  }
 };
 
 export const generateTokenAndSetCookie = async (payload: TokenPayload) => {

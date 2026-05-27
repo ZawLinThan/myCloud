@@ -10,6 +10,7 @@ const NavBar = () => {
   const pathName = usePathname();
   const authPaths = ['/sign-in', '/sign-up'];
   const isAuthPage = authPaths.includes(pathName);
+  const isDashboardPage = pathName.startsWith('/dashboard');
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-app surface/95 backdrop-blur">
@@ -24,7 +25,16 @@ const NavBar = () => {
             </span>
           </Link>
 
-          {isAuthPage ? (
+          {isDashboardPage ? (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard"
+                className="rounded-md bg-[var(--surface-soft)] px-3 py-2 text-sm font-semibold text-app"
+              >
+                Dashboard
+              </Link>
+            </div>
+          ) : isAuthPage ? (
             <button
               aria-label="Language"
               className="grid h-10 w-10 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-app"
