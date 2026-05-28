@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import NavBar from '../components/NavBar';
 import ThemeToggle from '../components/ThemeToggle';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata: Metadata = {
   title: 'MyCloud',
@@ -16,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full" suppressHydrationWarning>
-        <NavBar />
-        {children}
-        <ThemeToggle />
+        <AuthProvider>
+          <NavBar />
+          {children}
+          <ThemeToggle />
+        </AuthProvider>
       </body>
     </html>
   );

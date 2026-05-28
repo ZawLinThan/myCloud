@@ -3,8 +3,10 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import { signOut } from 'firebase/auth';
 
 import { logout } from '@/lib/actions/user.actions';
+import { auth } from '@/lib/firebase/firebase';
 
 export default function SignOutButton() {
   const router = useRouter();
@@ -12,6 +14,7 @@ export default function SignOutButton() {
 
   const handleSignOut = () => {
     startTransition(async () => {
+      await signOut(auth);
       await logout();
       router.replace('/sign-in');
       router.refresh();

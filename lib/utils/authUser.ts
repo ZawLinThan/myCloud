@@ -1,4 +1,4 @@
-type AuthUserDocument = {
+export type AuthUserDocument = {
   _id: {
     toString: () => string;
   };

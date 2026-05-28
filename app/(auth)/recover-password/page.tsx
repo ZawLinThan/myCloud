@@ -2,21 +2,25 @@
 
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 import AuthSubmitButton from '../components/AuthSubmitButton';
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
-import { resendOtp } from '@/lib/actions/user.actions';
 import ErrorMessage from '../../../components/ErrorMessage';
+import SuccessMessage from '@/components/SuccessMessage';
+import { auth } from '@/lib/firebase/firebase';
+import { useRouter } from 'next/navigation';
 
 export default function RecoverPasswordPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage('');
+    setSuccessMessage('');
 
     const formData = new FormData(event.currentTarget);
     const email = formData.get('email')?.toString().trim();
@@ -29,16 +33,12 @@ export default function RecoverPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await resendOtp({ email, type: 'recovery' });
-
-      if (!result.success) {
-        setErrorMessage(result.message);
-        return;
-      }
-
-      router.replace(
-        `/verify-otp?flow=recovery&email=${encodeURIComponent(email)}`
-      );
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMessage('Password reset email sent. Check your inbox.');
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      router.push('/sign-in');
+    } catch {
+      setErrorMessage('Failed to send password reset email.');
     } finally {
       setIsSubmitting(false);
     }
@@ -79,6 +79,7 @@ export default function RecoverPasswordPage() {
       </form>
 
       {errorMessage && <ErrorMessage message={errorMessage} />}
+      {successMessage && <SuccessMessage message={successMessage} />}
 
       <p className="mt-6 text-center text-sm text-muted">
         Remembered your password?{' '}

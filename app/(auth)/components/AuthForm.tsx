@@ -5,6 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth';
 
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
@@ -15,6 +21,31 @@ import ErrorMessage from '../../../components/ErrorMessage';
 import { AuthFormProps, AuthFormValues, authFormSchema } from '../types';
 import { signIn, signUp } from '@/lib/actions/user.actions';
 import { getAuthFormContent, getDefaultValues } from '../utils/authForm.util';
+import SignInWithGoogle from './SignInWithGoogle';
+import { auth } from '@/lib/firebase/firebase';
+
+const getFirebaseAuthMessage = (error: unknown) => {
+  const code =
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+      ? error.code
+      : '';
+
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'User with this email already exists! Sign in to your account.';
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Invalid credential.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a moment and try again.';
+    default:
+      return 'Firebase could not complete authentication.';
+  }
+};
 
 const AuthForm = ({ type }: AuthFormProps) => {
   const isSignIn = type === 'sign-in';
@@ -39,37 +70,55 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    if (isSignIn) {
-      const result = await signIn({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (!result.success) {
-        setBackendErrorMsg(result.message);
-      } else {
-        setBackendSuccessMsg(result.message);
-        router.replace('/dashboard');
-      }
-    } else {
-      if (!data.fullName) {
-        throw new Error('Full name is required');
-      }
-
-      const result = await signUp({
-        fullName: data.fullName,
-        email: data.email,
-        password: data.password,
-      });
-
-      if (!result.success) {
-        setBackendErrorMsg(result.message);
-      } else {
-        setBackendSuccessMsg(result.message);
-        router.replace(
-          `/verify-otp?flow=sign-up&email=${encodeURIComponent(data.email)}`
+    try {
+      if (isSignIn) {
+        const credential = await signInWithEmailAndPassword(
+          auth,
+          data.email,
+          data.password
         );
+        const idToken = await credential.user.getIdToken();
+        const result = await signIn({ idToken });
+
+        if (!result.success) {
+          setBackendErrorMsg(result.message);
+        } else {
+          setBackendSuccessMsg(result.message);
+          router.replace('/dashboard');
+          router.refresh();
+        }
+      } else {
+        if (!data.fullName) {
+          throw new Error('Full name is required');
+        }
+
+        const credential = await createUserWithEmailAndPassword(
+          auth,
+          data.email,
+          data.password
+        );
+
+        await updateProfile(credential.user, {
+          displayName: data.fullName,
+        });
+        await sendEmailVerification(credential.user);
+
+        const idToken = await credential.user.getIdToken(true);
+        const result = await signUp({
+          fullName: data.fullName,
+          idToken,
+        });
+
+        if (!result.success) {
+          setBackendErrorMsg(result.message);
+        } else {
+          setBackendSuccessMsg(result.message);
+          router.replace('/dashboard');
+          router.refresh();
+        }
       }
+    } catch (error) {
+      setBackendErrorMsg(getFirebaseAuthMessage(error));
     }
   };
 
@@ -166,6 +215,11 @@ const AuthForm = ({ type }: AuthFormProps) => {
           Forgot password?
         </Link>
       )}
+
+      <div>
+        <SignInWithGoogle />
+        <SignInWithGoogle />
+      </div>
     </div>
   );
 };

@@ -13,28 +13,26 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@firebase-oss/ui-react": "^7.0.2-beta",
     "@hookform/resolvers": "^5.4.0",
     "@mui/icons-material": "^9.0.1",
     "@mui/material": "^9.0.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
-    "jsonwebtoken": "^9.0.3",
+    "firebase": "^12.13.0",
+    "firebase-admin": "^13.10.0",
     "mongoose": "^9.6.2",
     "next": "16.2.6",
     "node-appwrite": "^25.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-firebase-hooks": "^5.1.1",
     "react-hook-form": "^7.76.1",
     "resend": "^6.12.3",
     "zod": "^4.4.3"
   },
-  "overrides": {
-    "react": "$react",
-    "react-dom": "$react-dom"
-  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

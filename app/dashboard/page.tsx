@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
@@ -20,6 +19,7 @@ import File from '@/models/file.model';
 import { connectDB } from '@/lib/mongoDB/db';
 import { getCurrentUser } from '@/lib/utils/session';
 import SignOutButton from './components/SignOutButton';
+import UploadButton from './components/UploadButton';
 
 type FileKind = 'document' | 'image' | 'video' | 'audio' | 'other';
 
@@ -143,11 +143,6 @@ export default async function DashboardPage() {
             </span>
           </Link>
 
-          <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5">
-            <AddRoundedIcon fontSize="small" />
-            Upload files
-          </button>
-
           <nav className="mt-6 space-y-1 text-sm font-medium">
             {[
               ['My files', GridViewRoundedIcon],
@@ -188,6 +183,8 @@ export default async function DashboardPage() {
               />
             </div>
           </div>
+
+          <UploadButton />
         </aside>
 
         <section className="min-w-0">

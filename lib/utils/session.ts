@@ -5,28 +5,32 @@ import { cookies } from 'next/headers';
 import User from '@/models/user.model';
 import { connectDB } from '@/lib/mongoDB/db';
 import { serializeAuthUser } from './authUser';
-import { SESSION_COOKIE_NAME, verifyToken } from './generateToken';
+import { firebaseAdminAuth } from '@/lib/firebase/admin';
+
+export const FIREBASE_SESSION_COOKIE_NAME = 'firebase-id-token';
+export const LEGACY_SESSION_COOKIE_NAME = 'session-token';
 
 export const getCurrentUser = async () => {
-  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  const token = (await cookies()).get(FIREBASE_SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
     return null;
   }
 
-  const payload = verifyToken(token);
+  try {
+    const decodedToken = await firebaseAdminAuth.verifyIdToken(token);
+    await connectDB();
 
-  if (!payload) {
+    const user = await User.findOne({
+      $or: [{ accountId: decodedToken.uid }, { email: decodedToken.email }],
+    });
+
+    if (!user?.isVerified) {
+      return null;
+    }
+
+    return serializeAuthUser(user);
+  } catch {
     return null;
   }
-
-  await connectDB();
-
-  const user = await User.findById(payload.userId);
-
-  if (!user?.isVerified) {
-    return null;
-  }
-
-  return serializeAuthUser(user);
 };
