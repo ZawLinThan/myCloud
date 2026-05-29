@@ -20,19 +20,27 @@ import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import AuthSubmitButton from './AuthSubmitButton';
 import ErrorMessage from '../../../components/ErrorMessage';
 import { AuthFormProps, AuthFormValues, authFormSchema } from '../types';
-import { setFirebaseSessionCookie, signIn } from '@/lib/actions/user.actions';
+import {
+  getFirebaseEmailVerificationStatus,
+  setFirebaseSessionCookie,
+  signIn,
+} from '@/lib/actions/user.actions';
 import { getAuthFormContent, getDefaultValues } from '../utils/authForm.util';
 import SignInWithGoogle from './SignInWithGoogle';
 import { auth } from '@/lib/firebase/firebase';
 
+const VERIFY_EMAIL_MESSAGE = 'Please verify your email before signing in.';
+
+const getFirebaseAuthCode = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  typeof error.code === 'string'
+    ? error.code
+    : '';
+
 const getFirebaseAuthMessage = (error: unknown) => {
-  const code =
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof error.code === 'string'
-      ? error.code
-      : '';
+  const code = getFirebaseAuthCode(error);
 
   switch (code) {
     case 'auth/email-already-in-use':
@@ -83,33 +91,43 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
         if (!result.success) {
           if (!credential.user.emailVerified) {
-            await signOut(auth);
-            setBackendErrorMsg('Your account is not verified yet.');
-            setBackendSuccessMsg(
-              'A verification link is sent to your account. Please verify to log in.'
-            );
             await sendEmailVerification(credential.user);
+            await signOut(auth);
+            setBackendErrorMsg(VERIFY_EMAIL_MESSAGE);
+            return;
           }
 
           setBackendErrorMsg(result.message);
         } else {
-          if (!credential.user.emailVerified) {
-            setBackendErrorMsg(
-              'A verification link is sent to your account. Please verify to log in.'
-            );
+          // if (!credential.user.emailVerified) {
+          //   setBackendErrorMsg(
+          //     'A verification link is sent to your account. Please verify to log in.'
+          //   );
 
-            await sendEmailVerification(credential.user);
-            await signOut(auth);
-          } else {
-            setBackendSuccessMsg(result.message);
-            setFirebaseSessionCookie(idToken);
-            router.replace('/dashboard');
-            router.refresh();
-          }
+          //   await sendEmailVerification(credential.user);
+          //   await signOut(auth);
+          // } else {
+          setBackendSuccessMsg(result.message);
+          setFirebaseSessionCookie(idToken);
+          router.replace('/dashboard');
+          router.refresh();
+          //}
         }
       } catch (error) {
-        const errorMsg = getFirebaseAuthMessage(error);
-        //setBackendErrorMsg(errorMsg);
+        const errorCode = getFirebaseAuthCode(error);
+
+        if (errorCode === 'auth/too-many-requests') {
+          const verificationStatus = await getFirebaseEmailVerificationStatus({
+            email: data.email,
+          });
+
+          if (verificationStatus.success && !verificationStatus.emailVerified) {
+            setBackendErrorMsg(VERIFY_EMAIL_MESSAGE);
+            return;
+          }
+        }
+
+        setBackendErrorMsg(getFirebaseAuthMessage(error));
         // if (error === 'User with this email already exists! Sign in to your account.') {
         //   const credential = await signInWithEmailAndPassword(auth, data.email, data.password);
         //   const user = credential.user;

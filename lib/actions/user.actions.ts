@@ -160,6 +160,26 @@ export const signIn = async ({ idToken }: { idToken: string }) => {
   return createOrUpdateFirebaseUser({ idToken });
 };
 
+export const getFirebaseEmailVerificationStatus = async ({
+  email,
+}: {
+  email: string;
+}) => {
+  try {
+    const user = await firebaseAdminAuth.getUserByEmail(email);
+
+    return {
+      success: true,
+      emailVerified: user.emailVerified,
+    };
+  } catch {
+    return {
+      success: false,
+      emailVerified: false,
+    };
+  }
+};
+
 export const signUp = async ({
   idToken,
   fullName,
