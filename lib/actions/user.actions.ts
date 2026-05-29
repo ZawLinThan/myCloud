@@ -21,7 +21,7 @@ const getVerifiedFirebaseUser = async (idToken: string) => {
   return firebaseAdminAuth.verifyIdToken(idToken);
 };
 
-const setFirebaseSessionCookie = async (idToken: string) => {
+export const setFirebaseSessionCookie = async (idToken: string) => {
   const cookieStore = await cookies();
 
   cookieStore.set(FIREBASE_SESSION_COOKIE_NAME, idToken, {
@@ -50,11 +50,23 @@ export const createOrUpdateFirebaseUser = async ({
   try {
     const decodedToken = await getVerifiedFirebaseUser(idToken);
     const email = decodedToken.email;
-
+    console.log(decodedToken.email);
     if (!email) {
       return {
         success: false,
         message: 'Firebase account does not include an email address.',
+      };
+    }
+
+    const signInProvider =
+      typeof decodedToken.firebase?.sign_in_provider === 'string'
+        ? decodedToken.firebase.sign_in_provider
+        : '';
+
+    if (signInProvider === 'password' && !decodedToken.email_verified) {
+      return {
+        success: false,
+        message: 'Please verify your email before signing in.',
       };
     }
 
@@ -95,7 +107,9 @@ export const createOrUpdateFirebaseUser = async ({
       }
     );
 
-    await setFirebaseSessionCookie(idToken);
+    {
+      /*await setFirebaseSessionCookie(idToken);*/
+    }
 
     return {
       success: true,
@@ -113,6 +127,36 @@ export const createOrUpdateFirebaseUser = async ({
 };
 
 export const signIn = async ({ idToken }: { idToken: string }) => {
+  // try {
+  //   const decodedToken = await getVerifiedFirebaseUser(idToken);
+  //   const email = decodedToken.email;
+
+  //   if (!email) {
+  //     return {
+  //       success: false,
+  //       message: 'Firebase account does not include an email address.',
+  //     };
+  //   }
+
+  //   const displayName =
+  //     decodedToken.name ||
+  //     email.split('@')[0] ||
+  //     'MyCloud user';
+
+  //   await setFirebaseSessionCookie(idToken);
+
+  //   return {
+  //     success: true,
+  //     message: 'Signed in successfully',
+  //     //user: serializeAuthUser(decodedToken),
+  //     user: {
+  //       uid : decodedToken.uid,
+  //       email: decodedToken.email,
+  //       name: displayName,
+  //       phone: decodedToken.phone_number,
+  //     }
+  //   };
+  // } catch (error) {}
   return createOrUpdateFirebaseUser({ idToken });
 };
 

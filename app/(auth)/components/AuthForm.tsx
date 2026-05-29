@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  signOut,
   signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
@@ -19,7 +20,7 @@ import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import AuthSubmitButton from './AuthSubmitButton';
 import ErrorMessage from '../../../components/ErrorMessage';
 import { AuthFormProps, AuthFormValues, authFormSchema } from '../types';
-import { signIn, signUp } from '@/lib/actions/user.actions';
+import { setFirebaseSessionCookie, signIn } from '@/lib/actions/user.actions';
 import { getAuthFormContent, getDefaultValues } from '../utils/authForm.util';
 import SignInWithGoogle from './SignInWithGoogle';
 import { auth } from '@/lib/firebase/firebase';
@@ -70,8 +71,8 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    try {
-      if (isSignIn) {
+    if (isSignIn) {
+      try {
         const credential = await signInWithEmailAndPassword(
           auth,
           data.email,
@@ -81,13 +82,49 @@ const AuthForm = ({ type }: AuthFormProps) => {
         const result = await signIn({ idToken });
 
         if (!result.success) {
+          if (!credential.user.emailVerified) {
+            await signOut(auth);
+            setBackendErrorMsg('Your account is not verified yet.');
+            setBackendSuccessMsg(
+              'A verification link is sent to your account. Please verify to log in.'
+            );
+            await sendEmailVerification(credential.user);
+          }
+
           setBackendErrorMsg(result.message);
         } else {
-          setBackendSuccessMsg(result.message);
-          router.replace('/dashboard');
-          router.refresh();
+          if (!credential.user.emailVerified) {
+            setBackendErrorMsg(
+              'A verification link is sent to your account. Please verify to log in.'
+            );
+
+            await sendEmailVerification(credential.user);
+            await signOut(auth);
+          } else {
+            setBackendSuccessMsg(result.message);
+            setFirebaseSessionCookie(idToken);
+            router.replace('/dashboard');
+            router.refresh();
+          }
         }
-      } else {
+      } catch (error) {
+        const errorMsg = getFirebaseAuthMessage(error);
+        //setBackendErrorMsg(errorMsg);
+        // if (error === 'User with this email already exists! Sign in to your account.') {
+        //   const credential = await signInWithEmailAndPassword(auth, data.email, data.password);
+        //   const user = credential.user;
+
+        //   console.log("HERE")
+        //   if (!user.emailVerified) {
+        //     await sendEmailVerification(credential.user);
+        //     await signOut(auth);
+
+        //     setBackendSuccessMsg('Verification email sent. Please verify your email before signing in.')
+        //   }
+        // }
+      }
+    } else {
+      try {
         if (!data.fullName) {
           throw new Error('Full name is required');
         }
@@ -102,23 +139,15 @@ const AuthForm = ({ type }: AuthFormProps) => {
           displayName: data.fullName,
         });
         await sendEmailVerification(credential.user);
+        await signOut(auth);
 
-        const idToken = await credential.user.getIdToken(true);
-        const result = await signUp({
-          fullName: data.fullName,
-          idToken,
-        });
-
-        if (!result.success) {
-          setBackendErrorMsg(result.message);
-        } else {
-          setBackendSuccessMsg(result.message);
-          router.replace('/dashboard');
-          router.refresh();
-        }
+        setBackendSuccessMsg(
+          'Verification email sent. Please verify your email before signing in.'
+        );
+      } catch (error) {
+        const errorMsg = getFirebaseAuthMessage(error);
+        setBackendErrorMsg(errorMsg);
       }
-    } catch (error) {
-      setBackendErrorMsg(getFirebaseAuthMessage(error));
     }
   };
 
@@ -217,7 +246,6 @@ const AuthForm = ({ type }: AuthFormProps) => {
       )}
 
       <div>
-        <SignInWithGoogle />
         <SignInWithGoogle />
       </div>
     </div>

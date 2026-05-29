@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 
 import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
@@ -18,6 +17,7 @@ import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import File from '@/models/file.model';
 import { connectDB } from '@/lib/mongoDB/db';
 import { getCurrentUser } from '@/lib/utils/session';
+import DashboardTabs from './components/DashboardTabs';
 import SignOutButton from './components/SignOutButton';
 import UploadButton from './components/UploadButton';
 
@@ -143,27 +143,7 @@ export default async function DashboardPage() {
             </span>
           </Link>
 
-          <nav className="mt-6 space-y-1 text-sm font-medium">
-            {[
-              ['My files', GridViewRoundedIcon],
-              ['Folders', FolderOutlinedIcon],
-              ['Storage', StorageOutlinedIcon],
-              ['Security', ShieldOutlinedIcon],
-            ].map(([item, Icon], index) => (
-              <Link
-                key={item as string}
-                href="/dashboard"
-                className={`flex items-center gap-3 rounded-md px-3 py-2 transition ${
-                  index === 0
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-muted hover:bg-black/5 hover:text-app'
-                }`}
-              >
-                <Icon fontSize="small" />
-                {item as string}
-              </Link>
-            ))}
-          </nav>
+          <DashboardTabs />
 
           <div className="mt-8 rounded-md border border-app bg-[var(--surface-soft)] p-4">
             <div className="flex items-center justify-between">
