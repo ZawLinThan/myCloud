@@ -9,18 +9,19 @@ import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import ErrorMessage from '../../../components/ErrorMessage';
 import SuccessMessage from '@/components/SuccessMessage';
 import { auth } from '@/lib/firebase/firebase';
+import { useRouter } from 'next/navigation';
 
 export default function RecoverPasswordPage() {
+  const router = useRouter();
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState('');
   const [recovery, setRecovery] = useState(false);
 
-  const sendRecoveryEmail = async (recoveryEmail: string) => {
+  const sendRecoveryEmail = async ({ email }: { email: string }) => {
     try {
-      setIsSubmitting(true);
-      await sendPasswordResetEmail(auth, recoveryEmail);
+      await sendPasswordResetEmail(auth, email);
       setSuccessMessage('Password reset email sent. Check your inbox.');
       await new Promise((resolve) => setTimeout(resolve, 800));
       setRecovery(true);
@@ -30,7 +31,6 @@ export default function RecoverPasswordPage() {
       setIsSubmitting(false);
     }
   };
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage('');
@@ -48,7 +48,9 @@ export default function RecoverPasswordPage() {
       return;
     }
 
-    void sendRecoveryEmail(email);
+    setIsSubmitting(true);
+
+    sendRecoveryEmail({ email });
   };
 
   return (
@@ -87,12 +89,11 @@ export default function RecoverPasswordPage() {
 
       {errorMessage && <ErrorMessage message={errorMessage} />}
       {successMessage && <SuccessMessage message={successMessage} />}
-      <div className="mt-3 flex justify-center hover:font-bold">
+      <div className="flex justify-center mt-3 hover:font-bold">
         {recovery && (
           <button
+            onClick={() => sendRecoveryEmail({ email })}
             className="text-accent underline"
-            onClick={() => void sendRecoveryEmail(email)}
-            type="button"
           >
             Resend recovery link.
           </button>

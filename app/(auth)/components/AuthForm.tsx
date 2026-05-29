@@ -90,28 +90,15 @@ const AuthForm = ({ type }: AuthFormProps) => {
         const result = await signIn({ idToken });
 
         if (!result.success) {
-          if (!credential.user.emailVerified) {
-            await sendEmailVerification(credential.user);
-            await signOut(auth);
-            setBackendErrorMsg(VERIFY_EMAIL_MESSAGE);
-            return;
-          }
-
           setBackendErrorMsg(result.message);
+          await sendEmailVerification(credential.user);
+          await signOut(auth);
+          return;
         } else {
-          // if (!credential.user.emailVerified) {
-          //   setBackendErrorMsg(
-          //     'A verification link is sent to your account. Please verify to log in.'
-          //   );
-
-          //   await sendEmailVerification(credential.user);
-          //   await signOut(auth);
-          // } else {
           setBackendSuccessMsg(result.message);
           setFirebaseSessionCookie(idToken);
           router.replace('/dashboard');
           router.refresh();
-          //}
         }
       } catch (error) {
         const errorCode = getFirebaseAuthCode(error);

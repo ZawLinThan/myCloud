@@ -50,7 +50,11 @@ export const createOrUpdateFirebaseUser = async ({
   try {
     const decodedToken = await getVerifiedFirebaseUser(idToken);
     const email = decodedToken.email;
-    console.log(decodedToken.email);
+
+    ////////////////////////
+    console.log(decodedToken);
+    ////////////////////////
+
     if (!email) {
       return {
         success: false,
