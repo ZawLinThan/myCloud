@@ -51,10 +51,6 @@ export const createOrUpdateFirebaseUser = async ({
     const decodedToken = await getVerifiedFirebaseUser(idToken);
     const email = decodedToken.email;
 
-    ////////////////////////
-    console.log(decodedToken);
-    ////////////////////////
-
     if (!email) {
       return {
         success: false,
@@ -111,9 +107,7 @@ export const createOrUpdateFirebaseUser = async ({
       }
     );
 
-    {
-      /*await setFirebaseSessionCookie(idToken);*/
-    }
+    await setFirebaseSessionCookie(idToken);
 
     return {
       success: true,
@@ -131,36 +125,6 @@ export const createOrUpdateFirebaseUser = async ({
 };
 
 export const signIn = async ({ idToken }: { idToken: string }) => {
-  // try {
-  //   const decodedToken = await getVerifiedFirebaseUser(idToken);
-  //   const email = decodedToken.email;
-
-  //   if (!email) {
-  //     return {
-  //       success: false,
-  //       message: 'Firebase account does not include an email address.',
-  //     };
-  //   }
-
-  //   const displayName =
-  //     decodedToken.name ||
-  //     email.split('@')[0] ||
-  //     'MyCloud user';
-
-  //   await setFirebaseSessionCookie(idToken);
-
-  //   return {
-  //     success: true,
-  //     message: 'Signed in successfully',
-  //     //user: serializeAuthUser(decodedToken),
-  //     user: {
-  //       uid : decodedToken.uid,
-  //       email: decodedToken.email,
-  //       name: displayName,
-  //       phone: decodedToken.phone_number,
-  //     }
-  //   };
-  // } catch (error) {}
   return createOrUpdateFirebaseUser({ idToken });
 };
 

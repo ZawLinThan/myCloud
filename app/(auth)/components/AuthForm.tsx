@@ -24,10 +24,12 @@ import {
   getFirebaseEmailVerificationStatus,
   setFirebaseSessionCookie,
   signIn,
+  signUp,
 } from '@/lib/actions/user.actions';
 import { getAuthFormContent, getDefaultValues } from '../utils/authForm.util';
 import SignInWithGoogle from './SignInWithGoogle';
 import { auth } from '@/lib/firebase/firebase';
+import { FirebaseError } from 'firebase/app';
 
 const VERIFY_EMAIL_MESSAGE = 'Please verify your email before signing in.';
 
@@ -48,7 +50,7 @@ const getFirebaseAuthMessage = (error: unknown) => {
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-      return 'Invalid credential.';
+      return 'Invalid credential. Or sign in with Google.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a moment and try again.';
     default:
@@ -91,7 +93,24 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
         if (!result.success) {
           setBackendErrorMsg(result.message);
-          await sendEmailVerification(credential.user);
+
+          try {
+            await sendEmailVerification(credential.user);
+            setBackendErrorMsg(
+              'Please verify your email. A new verification link has been sent.'
+            );
+          } catch (verifyError: unknown) {
+            if (verifyError instanceof FirebaseError) {
+              if (verifyError.code === 'auth/too-many-requests') {
+                setBackendErrorMsg(
+                  'Please verify your email. Check your inbox for the verification link.'
+                );
+              } else {
+                console.error('Verification email error:', verifyError);
+              }
+            }
+          }
+
           await signOut(auth);
           return;
         } else {
@@ -115,18 +134,6 @@ const AuthForm = ({ type }: AuthFormProps) => {
         }
 
         setBackendErrorMsg(getFirebaseAuthMessage(error));
-        // if (error === 'User with this email already exists! Sign in to your account.') {
-        //   const credential = await signInWithEmailAndPassword(auth, data.email, data.password);
-        //   const user = credential.user;
-
-        //   console.log("HERE")
-        //   if (!user.emailVerified) {
-        //     await sendEmailVerification(credential.user);
-        //     await signOut(auth);
-
-        //     setBackendSuccessMsg('Verification email sent. Please verify your email before signing in.')
-        //   }
-        // }
       }
     } else {
       try {
@@ -140,6 +147,11 @@ const AuthForm = ({ type }: AuthFormProps) => {
           data.password
         );
 
+        const idToken = await credential.user.getIdToken();
+        const result = await signUp({ idToken, fullName: data.fullName });
+
+        if (!result.success) {
+        }
         await updateProfile(credential.user, {
           displayName: data.fullName,
         });

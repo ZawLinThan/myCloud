@@ -9,10 +9,8 @@ import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import ErrorMessage from '../../../components/ErrorMessage';
 import SuccessMessage from '@/components/SuccessMessage';
 import { auth } from '@/lib/firebase/firebase';
-import { useRouter } from 'next/navigation';
 
 export default function RecoverPasswordPage() {
-  const router = useRouter();
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
