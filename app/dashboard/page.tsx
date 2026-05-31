@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 
 import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
@@ -15,25 +16,14 @@ import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 
 import File from '@/models/file.model';
+import { fileFormat, FileKind } from './types';
 import { getCurrentUser } from '@/lib/utils/session';
 import DashboardTabs from './components/DashboardTabs';
 import SignOutButton from './components/SignOutButton';
 import UploadButton from './components/UploadButton';
+import { getFiles } from '@/lib/actions/file.actions';
 
-type FileKind = 'document' | 'image' | 'video' | 'audio' | 'other';
-
-type DashboardFile = {
-  _id: {
-    toString: () => string;
-  };
-  extension?: string;
-  file: FileKind;
-  name: string;
-  size?: number;
-  url: string;
-};
-
-const STORAGE_LIMIT_BYTES = 100 * 1024 * 1024 * 1024;
+const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024; // 1GB
 
 const fileTypeMeta = {
   document: {
@@ -94,14 +84,22 @@ const getInitials = (name: string) => {
 };
 
 const getDashboardFiles = async (accountId: string) => {
+  const result = await getFiles(accountId);
+
+  if (!result.success) {
+    throw new Error("Error in fetching user's file for dashboard.");
+  }
+
+  console.log(result.files);
+  return result.files;
   //await connectDB();
 
-  const files = await File.find({ accountId })
-    .sort({ _id: -1 })
-    .limit(12)
-    .lean<DashboardFile[]>();
+  // const files = await File.find({ accountId })
+  //   .sort({ _id: -1 })
+  //   .limit(12)
+  //   .lean<DashboardFile[]>();
 
-  return files;
+  // return files;
 };
 
 export default async function DashboardPage() {
@@ -111,15 +109,23 @@ export default async function DashboardPage() {
     redirect('/sign-in');
   }
 
-  const files = await getDashboardFiles(user.accountId);
-  const totalBytes = files.reduce((sum, file) => sum + (file.size ?? 0), 0);
-  const usedPercent = Math.min(
-    Math.round((totalBytes / STORAGE_LIMIT_BYTES) * 100),
-    100
-  );
+  let files = (await getDashboardFiles(user.accountId)) as fileFormat[];
+  files = Array.isArray(files) ? files : [];
+  // need to fix the type of "file"
+  const totalBytes =
+    files.reduce(
+      (sum: number, file: fileFormat) => sum + (file.size ?? 0),
+      0
+    ) || 0;
+  const usedPercent = Math.round((totalBytes / STORAGE_LIMIT_BYTES) * 100);
+  // Math.min(
+  //   Math.round((totalBytes / STORAGE_LIMIT_BYTES) * 100),
+  //   100
+  // );
+
   const typeCounts = files.reduce<Record<FileKind, number>>(
     (counts, file) => {
-      counts[file.file] += 1;
+      counts[file.type] += 1;
       return counts;
     },
     { audio: 0, document: 0, image: 0, other: 0, video: 0 }
@@ -247,14 +253,14 @@ export default async function DashboardPage() {
               {files.length > 0 ? (
                 <div className="divide-y divide-[var(--border)]">
                   {files.map((file) => {
-                    const meta = fileTypeMeta[file.file] ?? fileTypeMeta.other;
+                    const meta = fileTypeMeta[file.type] ?? fileTypeMeta.other;
                     const Icon = meta.icon;
 
                     return (
                       <Link
                         className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-black/[0.03]"
                         href={file.url}
-                        key={file._id.toString()}
+                        key={file.key}
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <span
@@ -268,6 +274,7 @@ export default async function DashboardPage() {
                             </span>
                             <span className="block text-sm text-muted">
                               {meta.label}
+                              {/* change extension to type */}
                               {file.extension
                                 ? ` · ${file.extension}`
                                 : ''} · {formatBytes(file.size)}
