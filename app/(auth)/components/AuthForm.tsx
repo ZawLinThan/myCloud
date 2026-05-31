@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -22,7 +21,6 @@ import ErrorMessage from '../../../components/ErrorMessage';
 import { AuthFormProps, AuthFormValues, authFormSchema } from '../types';
 import {
   getFirebaseEmailVerificationStatus,
-  setFirebaseSessionCookie,
   signIn,
   signUp,
 } from '@/lib/actions/user.actions';
@@ -50,7 +48,7 @@ const getFirebaseAuthMessage = (error: unknown) => {
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-      return 'Invalid credential. Or sign in with Google.';
+      return 'Wrong email or password.';
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a moment and try again.';
     default:
@@ -72,7 +70,6 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
   const [backendErrorMsg, setBackendErrorMsg] = useState('');
   const [backendSuccessMsg, setBackendSuccessMsg] = useState('');
-  const router = useRouter();
 
   // Submit handler for both sign-in and sign-up forms.
   const onSubmit = async (data: AuthFormValues) => {
@@ -115,9 +112,6 @@ const AuthForm = ({ type }: AuthFormProps) => {
           return;
         } else {
           setBackendSuccessMsg(result.message);
-          setFirebaseSessionCookie(idToken);
-          router.replace('/dashboard');
-          router.refresh();
         }
       } catch (error) {
         const errorCode = getFirebaseAuthCode(error);

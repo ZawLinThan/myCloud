@@ -15,7 +15,6 @@ import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 
 import File from '@/models/file.model';
-import { connectDB } from '@/lib/mongoDB/db';
 import { getCurrentUser } from '@/lib/utils/session';
 import DashboardTabs from './components/DashboardTabs';
 import SignOutButton from './components/SignOutButton';
@@ -82,16 +81,20 @@ const formatBytes = (bytes = 0) => {
   return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[exponent]}`;
 };
 
-const getInitials = (name: string) =>
-  name
+const getInitials = (name: string) => {
+  if (!name) {
+    return 'User';
+  }
+  return name
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
+};
 
 const getDashboardFiles = async (accountId: string) => {
-  await connectDB();
+  //await connectDB();
 
   const files = await File.find({ accountId })
     .sort({ _id: -1 })
@@ -164,7 +167,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <UploadButton />
+          <UploadButton uid={user.accountId} />
         </aside>
 
         <section className="min-w-0">
@@ -174,7 +177,7 @@ export default async function DashboardPage() {
                 Workspace dashboard
               </p>
               <h1 className="mt-1 text-3xl font-semibold tracking-tight text-app sm:text-4xl">
-                Welcome back, {user.fullName.split(' ')[0]}.
+                Welcome back, {user.fullName && user.fullName.split(' ')[0]}.
               </h1>
             </div>
 

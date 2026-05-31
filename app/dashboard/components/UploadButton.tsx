@@ -2,6 +2,8 @@
 import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { ChangeEvent, useState } from 'react';
+import { uploadFile } from '@/lib/actions/file.actions';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -15,7 +17,32 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
-export default function UploadButton() {
+export default function UploadButton({ uid }: { uid: string }) {
+  const [isUploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (
+    event: ChangeEvent<HTMLInputElement, HTMLInputElement>
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length == 0) {
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('uid', uid);
+        console.log(uid);
+        const result = await uploadFile(formData);
+        console.log('Uploaded:', result.url);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
   return (
     <Button
       component="label"
@@ -38,11 +65,7 @@ export default function UploadButton() {
       }}
     >
       <CloudUploadIcon />
-      <VisuallyHiddenInput
-        type="file"
-        onChange={(event) => console.log(event.target.files)}
-        multiple
-      />
+      <VisuallyHiddenInput type="file" onChange={handleFileUpload} multiple />
     </Button>
   );
 }
