@@ -8,4 +8,13 @@ export interface fileFormat {
   extension?: string;
   //file: FileKind;
   url: string;
+  uploadedAt: string | null;
+}
+
+export interface CurrentUser {
+  accountId: string;
+  email: string | undefined;
+  fullName: string;
+  avatar: string | null;
+  files: fileFormat;
 }

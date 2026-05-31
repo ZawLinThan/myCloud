@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import NavBar from '../components/NavBar';
 import ThemeToggle from '../components/ThemeToggle';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: 'MyCloud',
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="min-h-full" suppressHydrationWarning>
         <NavBar />
         {children}
+        <Toaster position="top-right" />
         <ThemeToggle />
       </body>
     </html>

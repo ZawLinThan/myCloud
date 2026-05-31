@@ -5,7 +5,7 @@ import { doc, setDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { r2 } from '../r2/r2';
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { fileFormat } from '@/app/dashboard/types';
+import { fileFormat } from '@/lib/types/types';
 
 const getFileExtension = (filename: string): string => {
   return filename.split('.').pop()?.toLowerCase() ?? '';
@@ -103,7 +103,7 @@ export const uploadFile = async (formData: FormData) => {
         size: file.size,
         type: getFileTypeFromMime(file.type),
         extension: getFileExtension(file.name),
-        uploadedAt: new Date(),
+        uploadedAt: new Date().toISOString(),
       }),
     },
     { merge: true }
@@ -118,7 +118,7 @@ export const getFiles = async (uid: string) => {
   if (!snap.exists()) return { success: false, files: [] };
 
   const data = snap.data();
-  const files: fileFormat = data.files ?? [];
+  const files = data.files;
 
   return { success: true, files: files };
 };

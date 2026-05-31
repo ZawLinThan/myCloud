@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { firebaseAdminAuth } from '@/lib/firebase/admin';
+import { CurrentUser } from '../types/types';
 
 export const FIREBASE_SESSION_COOKIE_NAME = 'firebase-id-token';
 export const LEGACY_SESSION_COOKIE_NAME = 'session-token';
@@ -27,7 +28,7 @@ export const clearSessionCookies = async () => {
   cookieStore.delete(LEGACY_SESSION_COOKIE_NAME);
 };
 
-export const getCurrentUser = async () => {
+export const getCurrentUser = async (): Promise<CurrentUser | null> => {
   const token = (await cookies()).get(FIREBASE_SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
