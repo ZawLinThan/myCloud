@@ -4,9 +4,9 @@ export interface fileFormat {
   key: string; // key
   name: string;
   size: number;
+  mimeType: string; // e.g. "image/jpeg"
   type: FileKind;
   extension?: string;
-  //file: FileKind;
   url: string;
   uploadedAt: string | null;
 }

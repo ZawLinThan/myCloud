@@ -1,10 +1,12 @@
 // lib/actions/file.actions.ts
 'use server';
 
-import { doc, setDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { doc, setDoc, arrayUnion, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { r2 } from '../r2/r2';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { fileFormat } from '../types/types';
 
 const getFileExtension = (filename: string): string => {
   return filename.split('.').pop()?.toLowerCase() ?? '';
@@ -85,30 +87,31 @@ export const uploadFile = async (formData: FormData) => {
       Key: key, // e.g. "uid_abc123/photo.jpg"
       Body: bytes,
       ContentType: file.type,
+      ContentDisposition: 'inline', // so it can be previewed in-browser instead of downloaded
     })
   );
 
-  // 1. Upload to R2
-  const url = `${process.env.R2_PUBLIC_URL}/${uid}/${key}`;
+  const fileData = {
+    name: file.name,
+    key,
+    size: file.size,
+    mimeType: file.type,
+    type: getFileTypeFromMime(file.type),
+    extension: getFileExtension(file.name),
+    uploadedAt: new Date().toISOString(),
+  };
 
-  // 2. Save metadata to Firestore
-  await setDoc(
-    doc(db, 'users', uid),
-    {
-      files: arrayUnion({
-        name: file.name,
-        url,
-        key, // ← save key too so you can delete later
-        size: file.size,
-        type: getFileTypeFromMime(file.type),
-        extension: getFileExtension(file.name),
-        uploadedAt: new Date().toISOString(),
-      }),
-    },
-    { merge: true }
-  );
+  // Save metadata to Firestore
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
 
-  return { success: true, url };
+  if (snap.exists()) {
+    await updateDoc(userRef, { files: arrayUnion(fileData) });
+  } else {
+    await setDoc(userRef, { files: [fileData] });
+  }
+
+  return { success: true };
 };
 
 export const getFiles = async (uid: string) => {
@@ -119,5 +122,27 @@ export const getFiles = async (uid: string) => {
   const data = snap.data();
   const files = data.files;
 
-  return { success: true, files: files };
+  const filesWithUrls = await Promise.all(
+    files.map(async (file: fileFormat) => ({
+      ...file,
+      uploadedAt:
+        typeof file.uploadedAt === 'string'
+          ? file.uploadedAt
+          : ((file.uploadedAt as unknown as { toDate: () => Date })
+              ?.toDate?.()
+              ?.toISOString() ?? null),
+      url: await getSignedUrl(
+        r2,
+        new GetObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME!,
+          Key: file.key,
+          ResponseContentDisposition: 'inline',
+          ResponseContentType: file.mimeType,
+        }),
+        { expiresIn: 3600 }
+      ),
+    }))
+  );
+
+  return { success: true, files: filesWithUrls };
 };

@@ -28,6 +28,7 @@ import { getFiles } from '@/lib/actions/file.actions';
 import { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024; // 1GB
+const INITIAL_VISIBLE_FILE_COUNT = 5;
 
 type SortMode = 'recent' | 'name' | 'size';
 
@@ -124,6 +125,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [activeKind, setActiveKind] = useState<FileKind | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [showAllFiles, setShowAllFiles] = useState(false);
   const [totalBytes, setTotalBytes] = useState(0);
   const [usedPercent, setUsePercent] = useState(0);
 
@@ -204,6 +206,13 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   }, [activeKind, files, normalizedSearchQuery, sortMode]);
   const isSearching = normalizedSearchQuery.length > 0;
   const isFilteringKind = activeKind !== 'all';
+  const visibleFiles = showAllFiles
+    ? filteredFiles
+    : filteredFiles.slice(0, INITIAL_VISIBLE_FILE_COUNT);
+  const hiddenFileCount = Math.max(
+    filteredFiles.length - visibleFiles.length,
+    0
+  );
 
   const typeCounts = filteredFiles.reduce<Record<FileKind, number>>(
     (counts, file) => {
@@ -239,16 +248,22 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     const currentIndex = sortOrder.indexOf(sortMode);
     const nextIndex = (currentIndex + 1) % sortOrder.length;
     setSortMode(sortOrder[nextIndex]);
+    setShowAllFiles(false);
   };
 
   const renderFileRow = (file: fileFormat) => {
     const meta = fileTypeMeta[file.type] ?? fileTypeMeta.other;
     const Icon = meta.icon;
-
+    const getFileUrl = (url: string, fileType: string) => {
+      if (['document', 'spreadsheet', 'presentation'].includes(fileType)) {
+        return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      }
+      return url; // images, pdf, video preview directly
+    };
     return (
       <Link
         className="flex min-w-0 max-w-full items-center justify-between gap-3 px-5 py-4 transition hover:bg-black/[0.03]"
-        href={file.url}
+        href={getFileUrl(file.url, file.extension ?? file.type)}
         key={file.key}
         title={file.name}
       >
@@ -346,7 +361,10 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 <span className="sr-only">Search files</span>
                 <input
                   className="min-w-0 flex-1 bg-transparent text-sm text-app outline-none placeholder:text-muted"
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value);
+                    setShowAllFiles(false);
+                  }}
                   placeholder="Search files"
                   type="search"
                   value={searchQuery}
@@ -428,8 +446,8 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                     </h2>
                     <p className="mt-1 truncate text-sm text-muted">
                       {isSearching || isFilteringKind
-                        ? `Showing ${filteredFiles.length} matching file${filteredFiles.length === 1 ? '' : 's'}`
-                        : 'Latest uploads in this workspace'}
+                        ? `Showing ${visibleFiles.length} of ${filteredFiles.length} matching file${filteredFiles.length === 1 ? '' : 's'}`
+                        : `Showing ${visibleFiles.length} of ${filteredFiles.length} latest upload${filteredFiles.length === 1 ? '' : 's'}`}
                     </p>
                   </div>
                   {(isSearching || isFilteringKind) && (
@@ -439,6 +457,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                       onClick={() => {
                         setSearchQuery('');
                         setActiveKind('all');
+                        setShowAllFiles(false);
                       }}
                       type="button"
                     >
@@ -468,7 +487,10 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                             : 'border-app surface text-muted hover:bg-black/5 hover:text-app'
                         }`}
                         key={type}
-                        onClick={() => setActiveKind(type)}
+                        onClick={() => {
+                          setActiveKind(type);
+                          setShowAllFiles(false);
+                        }}
                         type="button"
                       >
                         {label}
@@ -478,9 +500,24 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 </div>
 
                 {filteredFiles.length > 0 ? (
-                  <div className="min-w-0 divide-y divide-[var(--border)] overflow-hidden">
-                    {filteredFiles.map(renderFileRow)}
-                  </div>
+                  <>
+                    <div className="min-w-0 divide-y divide-[var(--border)] overflow-hidden">
+                      {visibleFiles.map(renderFileRow)}
+                    </div>
+                    {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
+                      <div className="border-t border-app px-5 py-4">
+                        <button
+                          className="flex h-10 w-full items-center justify-center rounded-md border border-app surface px-4 text-sm font-semibold text-accent transition hover:bg-black/5"
+                          onClick={() => setShowAllFiles((current) => !current)}
+                          type="button"
+                        >
+                          {showAllFiles
+                            ? 'Show fewer'
+                            : `More (${hiddenFileCount})`}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="px-5 py-12 text-center">
                     <span className="mx-auto grid h-14 w-14 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
@@ -530,6 +567,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                         onClick={() => {
                           setActiveKind(type);
                           setActiveTab('files');
+                          setShowAllFiles(false);
                         }}
                         type="button"
                       >
