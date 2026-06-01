@@ -90,7 +90,7 @@ export const uploadFile = async (formData: FormData) => {
   );
 
   // 1. Upload to R2
-  const url = `https://${process.env.R2_PUBLIC_URL}/${key}`;
+  const url = `${process.env.R2_PUBLIC_URL}/${uid}/${key}`;
 
   // 2. Save metadata to Firestore
   await setDoc(

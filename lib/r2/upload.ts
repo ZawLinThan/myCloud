@@ -15,7 +15,7 @@ export const uploadFile = async (
     })
   );
 
-  return `https://${process.env.R2_PUBLIC_URL}/${key}`;
+  return `${process.env.R2_PUBLIC_URL}/${key}`;
 };
 
 export const deleteFile = async (key: string) => {

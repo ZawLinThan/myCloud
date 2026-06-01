@@ -16,5 +16,5 @@ export interface CurrentUser {
   email: string | undefined;
   fullName: string;
   avatar: string | null;
-  files: fileFormat;
+  files: fileFormat[];
 }

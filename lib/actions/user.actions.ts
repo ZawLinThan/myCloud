@@ -5,8 +5,9 @@ import {
   setFirebaseSessionCookie,
   clearSessionCookies,
 } from '../utils/session';
-import { setDoc, doc } from 'firebase/firestore';
+import { setDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
+import type { fileFormat } from '../types/types';
 
 const getVerifiedFirebaseUser = async (idToken: string) => {
   if (!idToken) {
@@ -52,48 +53,26 @@ export const createOrUpdateFirebaseUser = async ({
       email.split('@')[0] ||
       'MyCloud user';
 
-    await setDoc(
-      doc(db, 'users', decodedToken.uid),
-      {
-        accountId: decodedToken.uid,
-        email: decodedToken.email,
-        fullName: displayName,
-        avatar: decodedToken.picture ?? null,
-        files: decodedToken.files ?? [],
-      },
-      { merge: true }
-    );
+    const userDocRef = doc(db, 'users', decodedToken.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    // const existingFiles = userDocSnap.exists()
+    //   ? ((userDocSnap.data().files ?? []) as fileFormat[])
+    //   : [];
 
-    // await connectDB();
-
-    // const user = await User.findOneAndUpdate(
-    //   {
-    //     $or: [{ accountId: decodedToken.uid }, { email }],
-    //   },
-    //   {
-    //     $set: {
-    //       avatar: decodedToken.picture ?? null,
-    //       email,
-    //       fullName: displayName,
-    //       isVerified: true,
-    //       deleteAt: null,
-    //     },
-    //     $setOnInsert: {
-    //       accountId: decodedToken.uid,
-    //       files: [],
-    //     },
-    //     $unset: {
-    //       otpHash: '',
-    //       otpExpiresAt: '',
-    //     },
-    //   },
-    //   {
-    //     new: true,
-    //     runValidators: true,
-    //     setDefaultsOnInsert: true,
-    //     upsert: true,
-    //   }
-    // );
+    // initialize at sign-up, not sign in
+    if (userDocSnap) {
+      await setDoc(
+        userDocRef,
+        {
+          accountId: decodedToken.uid,
+          email: decodedToken.email,
+          fullName: displayName,
+          avatar: decodedToken.picture ?? null,
+          ...(!userDocSnap.exists() ? { files: [] } : {}),
+        },
+        { merge: true }
+      );
+    }
 
     await setFirebaseSessionCookie(idToken);
 
@@ -103,7 +82,7 @@ export const createOrUpdateFirebaseUser = async ({
       user: {
         accountId: decodedToken.uid,
         email: decodedToken.email,
-        fullName: decodedToken.name,
+        fullName: displayName,
         avatar: decodedToken.picture ?? null,
         files: decodedToken.files,
       },
