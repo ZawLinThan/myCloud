@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
@@ -10,23 +8,29 @@ import type { SvgIconComponent } from '@mui/icons-material';
 
 type DashboardTab = {
   icon: SvgIconComponent;
-  id: string;
+  id: DashboardTabId;
   label: string;
 };
 
-const tabs: DashboardTab[] = [
+export type DashboardTabId = 'files' | 'folders' | 'storage' | 'security';
+
+export const dashboardTabs: DashboardTab[] = [
   { id: 'files', label: 'My files', icon: GridViewRoundedIcon },
   { id: 'folders', label: 'Folders', icon: FolderOutlinedIcon },
   { id: 'storage', label: 'Storage', icon: StorageOutlinedIcon },
   { id: 'security', label: 'Security', icon: ShieldOutlinedIcon },
 ];
 
-export default function DashboardTabs() {
-  const [activeTab, setActiveTab] = useState(tabs[0].id);
-
+export default function DashboardTabs({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: DashboardTabId;
+  onTabChange: (tab: DashboardTabId) => void;
+}) {
   return (
     <nav className="mt-6 space-y-1 text-sm font-medium">
-      {tabs.map(({ icon: Icon, id, label }) => {
+      {dashboardTabs.map(({ icon: Icon, id, label }) => {
         const isActive = activeTab === id;
 
         return (
@@ -38,7 +42,7 @@ export default function DashboardTabs() {
                 : 'text-muted hover:bg-black/5 hover:text-app'
             }`}
             key={id}
-            onClick={() => setActiveTab(id)}
+            onClick={() => onTabChange(id)}
             type="button"
           >
             <Icon fontSize="small" />

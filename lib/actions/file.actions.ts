@@ -4,8 +4,7 @@
 import { doc, setDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { r2 } from '../r2/r2';
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { fileFormat } from '@/lib/types/types';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 const getFileExtension = (filename: string): string => {
   return filename.split('.').pop()?.toLowerCase() ?? '';

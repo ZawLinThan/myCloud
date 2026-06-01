@@ -7,7 +7,6 @@ import {
 } from '../utils/session';
 import { setDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
-import type { fileFormat } from '../types/types';
 
 const getVerifiedFirebaseUser = async (idToken: string) => {
   if (!idToken) {

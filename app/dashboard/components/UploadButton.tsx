@@ -22,9 +22,13 @@ const VisuallyHiddenInput = styled('input')({
 export default function UploadButton({
   uid,
   onUploadComplete,
+  total,
+  limit,
 }: {
   uid: string;
   onUploadComplete?: () => void;
+  total: number;
+  limit: number;
 }) {
   const [isUploading, setUploading] = useState(false);
 
@@ -33,6 +37,18 @@ export default function UploadButton({
   ) => {
     const files = event.target.files;
     if (!files || files.length == 0) {
+      return;
+    }
+
+    const fileTotal = Array.from(files).reduce(
+      (sum, file) => sum + file.size,
+      0
+    );
+    if (total + fileTotal > limit) {
+      console.log(`total: ${total}, fileTotal: ${fileTotal}, limit: ${limit}`);
+      toast.error(
+        'Upload limit exceeded. Please delete some files before uploading new ones.'
+      );
       return;
     }
 
@@ -51,6 +67,7 @@ export default function UploadButton({
         });
       }
       onUploadComplete?.();
+      event.target.value = '';
     } catch (error) {
       console.log(error);
     } finally {
@@ -69,16 +86,15 @@ export default function UploadButton({
         '&:hover': {
           backgroundColor: '#1d4ed8',
         },
-        padding: 0,
+        padding: '12px 16px',
         marginTop: 5,
-        // Ensure minWidth doesn't interfere
         minWidth: 'auto',
-        // Make sure the button takes full width
         width: '100%',
-        height: '5%',
       }}
+      disabled={isUploading}
     >
       <CloudUploadIcon />
+      {isUploading ? 'Uploading...' : 'Upload files'}
       <VisuallyHiddenInput type="file" onChange={handleFileUpload} multiple />
     </Button>
   );
