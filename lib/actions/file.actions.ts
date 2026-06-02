@@ -4,7 +4,11 @@
 import { doc, setDoc, arrayUnion, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { r2 } from '../r2/r2';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { fileFormat } from '../types/types';
 
@@ -99,6 +103,7 @@ export const uploadFile = async (formData: FormData) => {
     type: getFileTypeFromMime(file.type),
     extension: getFileExtension(file.name),
     uploadedAt: new Date().toISOString(),
+    //protected: false, // default to unprotected, can be updated later
   };
 
   // Save metadata to Firestore
@@ -145,4 +150,39 @@ export const getFiles = async (uid: string) => {
   );
 
   return { success: true, files: filesWithUrls };
+};
+
+export const deleteUploadedFile = async ({
+  uid,
+  key,
+}: {
+  uid: string;
+  key: string;
+}) => {
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    return { success: false, message: 'User not found.' };
+  }
+
+  const files = Array.isArray(snap.data().files) ? snap.data().files : [];
+  const fileExists = files.some((file: fileFormat) => file.key === key);
+
+  if (!fileExists) {
+    return { success: false, message: 'File not found.' };
+  }
+
+  await r2.send(
+    new DeleteObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME!,
+      Key: key,
+    })
+  );
+
+  await updateDoc(userRef, {
+    files: files.filter((file: fileFormat) => file.key !== key),
+  });
+
+  return { success: true };
 };

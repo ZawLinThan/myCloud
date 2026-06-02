@@ -16,6 +16,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
+import { toast } from 'sonner';
 
 import { CurrentUser, fileFormat, FileKind } from '../../lib/types/types';
 import DashboardTabs, {
@@ -24,8 +25,10 @@ import DashboardTabs, {
 } from './components/DashboardTabs';
 import SignOutButton from './components/SignOutButton';
 import UploadButton from './components/UploadButton';
-import { getFiles } from '@/lib/actions/file.actions';
+import { deleteUploadedFile, getFiles } from '@/lib/actions/file.actions';
 import { useEffect, useMemo, useState } from 'react';
+import FileDropDownMenu from './components/FileDropDownMenu';
+import FilterDropDownMenu from './components/FilterDropDownMenu';
 
 const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024; // 1GB
 const INITIAL_VISIBLE_FILE_COUNT = 5;
@@ -125,7 +128,10 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [activeKind, setActiveKind] = useState<FileKind | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);
+  const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
+  const [deletingFileKey, setDeletingFileKey] = useState<string | null>(null);
   const [totalBytes, setTotalBytes] = useState(0);
   const [usedPercent, setUsePercent] = useState(0);
 
@@ -251,7 +257,51 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     setShowAllFiles(false);
   };
 
-  const renderFileRow = (file: fileFormat) => {
+  const handleShareFile = async (file: fileFormat) => {
+    try {
+      await navigator.clipboard.writeText(file.url);
+      toast.success('Share link copied');
+    } catch {
+      toast.error('Unable to copy share link');
+    } finally {
+      setOpenFileMenuKey(null);
+    }
+  };
+
+  const handleDeleteFile = async (file: fileFormat) => {
+    const shouldDelete = window.confirm(`Delete "${file.name}"?`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingFileKey(file.key);
+
+    try {
+      const result = await deleteUploadedFile({
+        key: file.key,
+        uid: user.accountId,
+      });
+
+      if (!result.success) {
+        toast.error(result.message ?? 'Unable to delete file');
+        return;
+      }
+
+      toast.success('File deleted');
+      setFiles((currentFiles) =>
+        currentFiles.filter((currentFile) => currentFile.key !== file.key)
+      );
+      await fetchFiles();
+    } catch {
+      toast.error('Unable to delete file');
+    } finally {
+      setDeletingFileKey(null);
+      setOpenFileMenuKey(null);
+    }
+  };
+
+  const renderFileRow = (file: fileFormat, index: number) => {
     const meta = fileTypeMeta[file.type] ?? fileTypeMeta.other;
     const Icon = meta.icon;
     const getFileUrl = (url: string, fileType: string) => {
@@ -261,36 +311,62 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       return url; // images, pdf, video preview directly
     };
     return (
-      <Link
-        className="flex min-w-0 max-w-full items-center justify-between gap-3 px-5 py-4 transition hover:bg-black/[0.03]"
-        href={getFileUrl(file.url, file.extension ?? file.type)}
+      <div
         key={file.key}
-        title={file.name}
+        className="flex min-w-0 max-w-full items-center justify-between gap-3 px-5 py-4 transition hover:bg-black/[0.03]"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-          <span
-            className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${meta.tone}`}
-          >
-            <Icon fontSize="small" />
-          </span>
-          <span className="min-w-0 flex-1 overflow-hidden">
+        <Link
+          className="min-w-0 flex-1"
+          href={getFileUrl(file.url, file.extension ?? file.type)}
+          rel="noreferrer"
+          target="_blank"
+          title={file.name}
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
             <span
-              className={`block max-w-full truncate font-semibold leading-5 text-app ${getFileNameSizeClass(file.name)}`}
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${meta.tone}`}
             >
-              {file.name}
+              <Icon fontSize="small" />
             </span>
-            <span className="block max-w-full truncate text-sm text-muted">
-              {meta.label}
-              {file.extension ? ` · ${file.extension}` : ''} ·{' '}
-              {formatBytes(file.size)}
+            <span className="min-w-0 flex-1 overflow-hidden">
+              <span
+                className={`block max-w-full truncate font-semibold leading-5 text-app ${getFileNameSizeClass(file.name)}`}
+              >
+                {file.name}
+              </span>
+              <span className="block max-w-full truncate text-sm text-muted">
+                {meta.label}
+                {file.extension ? ` · ${file.extension}` : ''} ·{' '}
+                {formatBytes(file.size)}
+              </span>
             </span>
-          </span>
+          </div>
+        </Link>
+        <div className="relative shrink-0">
+          <button
+            aria-expanded={openFileMenuKey === file.key}
+            aria-label={`Open actions for ${file.name}`}
+            className="grid h-9 w-9 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-app"
+            onClick={() =>
+              setOpenFileMenuKey((currentKey) =>
+                currentKey === file.key ? null : file.key
+              )
+            }
+            type="button"
+          >
+            <MoreHorizRoundedIcon fontSize="small" />
+          </button>
+          {openFileMenuKey === file.key && (
+            <FileDropDownMenu
+              isDeleting={deletingFileKey === file.key}
+              onClose={() => setOpenFileMenuKey(null)}
+              onDelete={() => void handleDeleteFile(file)}
+              onShare={() => void handleShareFile(file)}
+              index={index}
+            />
+          )}
         </div>
-        <MoreHorizRoundedIcon
-          className="shrink-0 text-muted"
-          fontSize="small"
-        />
-      </Link>
+      </div>
     );
   };
 
@@ -373,11 +449,15 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               <button
                 aria-label={`Sort files by ${sortLabels[sortMode]}`}
                 className="flex h-10 items-center gap-2 rounded-md border border-app surface px-3 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app"
-                onClick={cycleSortMode}
+                //onClick={cycleSortMode}
+                onClick={() => setSortMenuOpen((open) => !open)}
                 type="button"
               >
                 <SortRoundedIcon fontSize="small" />
-                <span className="hidden sm:inline">{sortLabels[sortMode]}</span>
+                {/* {sortMenuOpen &&
+                  <FilterDropDownMenu/>
+                } */}
+                {/*<span className="hidden sm:inline">{sortLabels[sortMode]}</span>*/}
               </button>
               <SignOutButton />
             </div>
@@ -502,7 +582,9 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 {filteredFiles.length > 0 ? (
                   <>
                     <div className="min-w-0 divide-y divide-[var(--border)] overflow-hidden">
-                      {visibleFiles.map(renderFileRow)}
+                      {visibleFiles.map((file, index) =>
+                        renderFileRow(file, index)
+                      )}
                     </div>
                     {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
                       <div className="border-t border-app px-5 py-4">
