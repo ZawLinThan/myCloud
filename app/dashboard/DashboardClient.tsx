@@ -27,8 +27,8 @@ import SignOutButton from './components/SignOutButton';
 import UploadButton from './components/UploadButton';
 import { deleteUploadedFile, getFiles } from '@/lib/actions/file.actions';
 import { useEffect, useMemo, useState } from 'react';
-import FileDropDownMenu from './components/FileDropDownMenu';
-import FilterDropDownMenu from './components/FilterDropDownMenu';
+import FileDropDownMenu from './components/DropDownMenu/FileDropDownMenu';
+import FilterDropDownMenu from './components/DropDownMenu/FilterDropDownMenu';
 
 const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024; // 1GB
 const INITIAL_VISIBLE_FILE_COUNT = 5;
@@ -129,6 +129,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [openSortMenuKey, setOpenSortMenuKey] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
   const [deletingFileKey, setDeletingFileKey] = useState<string | null>(null);
@@ -250,21 +251,28 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     }
   );
 
-  const cycleSortMode = () => {
-    const currentIndex = sortOrder.indexOf(sortMode);
-    const nextIndex = (currentIndex + 1) % sortOrder.length;
-    setSortMode(sortOrder[nextIndex]);
+  const SortFiles = (type: SortMode) => {
+    // const currentIndex = sortOrder.indexOf(sortMode);
+    // const nextIndex = (currentIndex + 1) % sortOrder.length;
+    //setSortMode(sortOrder[nextIndex]);
+    setSortMode(type);
     setShowAllFiles(false);
+    setSortMenuOpen(false);
   };
 
-  const handleShareFile = async (file: fileFormat) => {
-    try {
-      await navigator.clipboard.writeText(file.url);
-      toast.success('Share link copied');
-    } catch {
-      toast.error('Unable to copy share link');
-    } finally {
-      setOpenFileMenuKey(null);
+  const handleShareFile = async (file: fileFormat, method: string) => {
+    if (method === 'copy') {
+      try {
+        await navigator.clipboard.writeText(file.url);
+        toast.success('Share link copied');
+      } catch {
+        toast.error('Unable to copy share link');
+      } finally {
+        setOpenFileMenuKey(null);
+      }
+    } else {
+      const shareUrl = `${window.location.origin}/share/${file.key}`;
+      console.log(shareUrl);
     }
   };
 
@@ -278,23 +286,29 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     setDeletingFileKey(file.key);
 
     try {
-      const result = await deleteUploadedFile({
-        key: file.key,
-        uid: user.accountId,
-      });
+      await toast.promise(
+        deleteUploadedFile({ key: file.key, uid: user.accountId }),
+        {
+          loading: `Deleting ${file.name}...`,
+          success: `${file.name} deleted successfully`,
+          error: `Failed to delete ${file.name}`,
+        }
+      );
+      // const result = await deleteUploadedFile({
+      //   key: file.key,
+      //   uid: user.accountId,
+      // });
 
-      if (!result.success) {
-        toast.error(result.message ?? 'Unable to delete file');
-        return;
-      }
+      // if (!result.success) {
+      //   toast.error(result.message ?? 'Unable to delete file');
+      //   return;
+      // }
 
-      toast.success('File deleted');
+      // toast.success('File deleted');
       setFiles((currentFiles) =>
         currentFiles.filter((currentFile) => currentFile.key !== file.key)
       );
       await fetchFiles();
-    } catch {
-      toast.error('Unable to delete file');
     } finally {
       setDeletingFileKey(null);
       setOpenFileMenuKey(null);
@@ -361,7 +375,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               isDeleting={deletingFileKey === file.key}
               onClose={() => setOpenFileMenuKey(null)}
               onDelete={() => void handleDeleteFile(file)}
-              onShare={() => void handleShareFile(file)}
+              onShare={(method: string) => void handleShareFile(file, method)}
               index={index}
             />
           )}
@@ -450,15 +464,15 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 aria-label={`Sort files by ${sortLabels[sortMode]}`}
                 className="flex h-10 items-center gap-2 rounded-md border border-app surface px-3 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app"
                 //onClick={cycleSortMode}
-                onClick={() => setSortMenuOpen((open) => !open)}
+                onClick={() => {
+                  setSortMenuOpen((open) => !open);
+                }}
                 type="button"
               >
                 <SortRoundedIcon fontSize="small" />
-                {/* {sortMenuOpen &&
-                  <FilterDropDownMenu/>
-                } */}
-                {/*<span className="hidden sm:inline">{sortLabels[sortMode]}</span>*/}
+                <span className="hidden sm:inline">{sortLabels[sortMode]}</span>
               </button>
+              {sortMenuOpen && <FilterDropDownMenu sortFunction={SortFiles} />}
               <SignOutButton />
             </div>
           </div>
