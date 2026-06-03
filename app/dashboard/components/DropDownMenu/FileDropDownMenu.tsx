@@ -2,6 +2,8 @@
 
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded';
+import SecurityIcon from '@mui/icons-material/Security';
+
 import { ClickAwayListener } from '@mui/material';
 import { useState } from 'react';
 
@@ -10,16 +12,18 @@ export default function FileDropDownMenu({
   onClose,
   onDelete,
   onShare,
+  onToggleProtection,
   index,
 }: {
   isDeleting: boolean;
   onClose: () => void;
   onDelete: () => void;
   onShare: (method: string) => void;
+  onToggleProtection: () => void;
   index: number;
 }) {
   const className =
-    index == 0
+    index == 0 || index == 1
       ? `absolute right-0 top-10 z-20 w-36 rounded-md border border-app surface py-1 shadow-drop-2`
       : `absolute right-0 bottom-10 top-auto z-20 w-36 rounded-md border border-app surface py-1 shadow-drop-2`;
 
@@ -27,16 +31,14 @@ export default function FileDropDownMenu({
   return (
     <ClickAwayListener onClickAway={onClose}>
       <div className={className}>
-        <div>
-          <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-muted transition hover:bg-black/5 hover:text-app"
-            onClick={() => setShareMenuOpen((open) => !open)}
-            type="button"
-          >
-            <IosShareRoundedIcon fontSize="small" />
-            Share
-          </button>
-        </div>
+        <button
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-muted transition hover:bg-black/5 hover:text-app"
+          onClick={() => setShareMenuOpen((open) => !open)}
+          type="button"
+        >
+          <IosShareRoundedIcon fontSize="small" />
+          Share
+        </button>
 
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -46,6 +48,15 @@ export default function FileDropDownMenu({
         >
           <DeleteOutlineRoundedIcon fontSize="small" />
           {isDeleting ? 'Deleting...' : 'Delete'}
+        </button>
+
+        <button
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-muted transition hover:bg-black/5 hover:text-app"
+          onClick={onToggleProtection}
+          type="button"
+        >
+          <SecurityIcon fontSize="small" />
+          Protected/ Unprotected
         </button>
 
         {shareMenuOpen && (

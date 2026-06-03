@@ -54,9 +54,6 @@ export const createOrUpdateFirebaseUser = async ({
 
     const userDocRef = doc(db, 'users', decodedToken.uid);
     const userDocSnap = await getDoc(userDocRef);
-    // const existingFiles = userDocSnap.exists()
-    //   ? ((userDocSnap.data().files ?? []) as fileFormat[])
-    //   : [];
 
     // initialize at sign-up, not sign in
     if (userDocSnap) {
@@ -67,6 +64,8 @@ export const createOrUpdateFirebaseUser = async ({
           email: decodedToken.email,
           fullName: displayName,
           avatar: decodedToken.picture ?? null,
+          otpHash: null, // to verify the user for protected files
+          otpExpiresAt: null,
           ...(!userDocSnap.exists() ? { files: [] } : {}),
         },
         { merge: true }

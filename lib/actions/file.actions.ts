@@ -1,7 +1,17 @@
 // lib/actions/file.actions.ts
 'use server';
 
-import { doc, setDoc, arrayUnion, getDoc, updateDoc } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  arrayUnion,
+  getDoc,
+  updateDoc,
+  query,
+  where,
+  collection,
+  getDocs,
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { r2 } from '../r2/r2';
 import {
@@ -11,6 +21,9 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { fileFormat } from '../types/types';
+import otpService from '../utils/otp';
+import { toast } from 'sonner';
+import { Resend } from 'resend';
 
 const getFileExtension = (filename: string): string => {
   return filename.split('.').pop()?.toLowerCase() ?? '';
@@ -103,7 +116,7 @@ export const uploadFile = async (formData: FormData) => {
     type: getFileTypeFromMime(file.type),
     extension: getFileExtension(file.name),
     uploadedAt: new Date().toISOString(),
-    //protected: false, // default to unprotected, can be updated later
+    protected: false, // default to unprotected, can be updated later
   };
 
   // Save metadata to Firestore
@@ -185,4 +198,105 @@ export const deleteUploadedFile = async ({
   });
 
   return { success: true };
+};
+
+export const toggleFileProtection = async ({
+  uid,
+  key,
+}: {
+  uid: string;
+  key: string;
+}) => {
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    return { success: false, message: 'User not found.' };
+  }
+
+  const files = Array.isArray(snap.data().files) ? snap.data().files : [];
+  const fileIndex = files.findIndex((file: fileFormat) => file.key === key);
+
+  if (fileIndex === -1) {
+    return { success: false, message: 'File not found.' };
+  }
+
+  files[fileIndex].protected = !files[fileIndex].protected;
+
+  await updateDoc(userRef, { files });
+
+  return { success: true };
+};
+
+export const openProtectedFile = async (uid: string) => {
+  // create OTP
+  const otp = otpService.generateOtp();
+  // hash OTP
+  const otpHash = await otpService.hashOtp(otp);
+  // assign hashed OTP & expiredAt to the user profile with uid
+  const expiredAt = otpService.getOtpExpiry();
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    return { success: false, message: 'User not found.' };
+  }
+
+  await updateDoc(userRef, { otpHash, otpExpiresAt: expiredAt });
+  // send OTP email with Resend
+  await toast.promise(
+    otpService.sendOtpEmail({ email: snap.data().email, otp }),
+    {
+      loading: 'Sending OTP...',
+      success: 'OTP sent to your email!',
+      error: 'Failed to send OTP. Please try again.',
+    }
+  );
+  // call verify otp when the user has entered the OTP
+};
+export const shareFileViaEmail = async (
+  uid: string,
+  file: fileFormat,
+  to: string
+) => {
+  // send email with Resend
+
+  // include the name of sender and receiver
+  // add the file to the receiver's files list
+  const resend = new Resend(process.env.RESEND_API);
+
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) {
+    return { success: false, message: 'User not found.' };
+  }
+  console.log(snap.data());
+  const { data, error } = await resend.emails.send({
+    from: 'onboarding@resend.dev',
+    to: to,
+    subject: `${snap.data().name} has shared a file with you on MyCloud!`,
+    html: `<p> ${snap.data().name} shared <strong> ${file.name}</strong> with you. It is added to your files list!</p>`,
+  });
+
+  const receiverRef = collection(db, 'users');
+  const q = query(receiverRef, where('email', '==', to));
+  const receiverSnap = await getDocs(q);
+
+  if (receiverSnap.empty) {
+    return { success: false, message: 'Receiver not found.' };
+  }
+
+  await updateDoc(doc(db, 'users', receiverSnap.docs[0].id), {
+    files: arrayUnion(file),
+  });
+
+  if (error)
+    return {
+      success: false,
+      message: error.message,
+    };
+
+  return {
+    success: true,
+    message: `OTP sent successfully. ID: ${data.id}`,
+  };
 };

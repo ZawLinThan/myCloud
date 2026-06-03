@@ -16,6 +16,8 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
+import SecurityIcon from '@mui/icons-material/Security';
+
 import { toast } from 'sonner';
 
 import { CurrentUser, fileFormat, FileKind } from '../../lib/types/types';
@@ -25,7 +27,12 @@ import DashboardTabs, {
 } from './components/DashboardTabs';
 import SignOutButton from './components/SignOutButton';
 import UploadButton from './components/UploadButton';
-import { deleteUploadedFile, getFiles } from '@/lib/actions/file.actions';
+import {
+  deleteUploadedFile,
+  getFiles,
+  shareFileViaEmail,
+  toggleFileProtection,
+} from '@/lib/actions/file.actions';
 import { useEffect, useMemo, useState } from 'react';
 import FileDropDownMenu from './components/DropDownMenu/FileDropDownMenu';
 import FilterDropDownMenu from './components/DropDownMenu/FilterDropDownMenu';
@@ -270,9 +277,36 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       } finally {
         setOpenFileMenuKey(null);
       }
-    } else {
-      const shareUrl = `${window.location.origin}/share/${file.key}`;
-      console.log(shareUrl);
+    } else if (method === 'email') {
+      console.log('Sharing files');
+      const result = await shareFileViaEmail(
+        user.accountId,
+        file,
+        'zawlinthan2005@gmail.com'
+      );
+
+      if (result.success) {
+        toast.success('File shared successfully!');
+      } else {
+        toast.error(`Failed to share file: ${result.message}`);
+      }
+    }
+  };
+
+  const handleFileProtection = async (file: fileFormat) => {
+    try {
+      await toast.promise(
+        toggleFileProtection({ key: file.key, uid: user.accountId }),
+        {
+          loading: file.protected
+            ? 'Unprotecting file...'
+            : 'Protecting file...',
+          success: file.protected ? 'File unprotected' : 'File protected',
+          error: 'Unable to update file protection',
+        }
+      );
+      await fetchFiles();
+    } finally {
     }
   };
 
@@ -294,17 +328,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           error: `Failed to delete ${file.name}`,
         }
       );
-      // const result = await deleteUploadedFile({
-      //   key: file.key,
-      //   uid: user.accountId,
-      // });
-
-      // if (!result.success) {
-      //   toast.error(result.message ?? 'Unable to delete file');
-      //   return;
-      // }
-
-      // toast.success('File deleted');
       setFiles((currentFiles) =>
         currentFiles.filter((currentFile) => currentFile.key !== file.key)
       );
@@ -356,6 +379,9 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
             </span>
           </div>
         </Link>
+        {file.protected && (
+          <ShieldOutlinedIcon className="text-muted" fontSize="small" />
+        )}
         <div className="relative shrink-0">
           <button
             aria-expanded={openFileMenuKey === file.key}
@@ -376,6 +402,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               onClose={() => setOpenFileMenuKey(null)}
               onDelete={() => void handleDeleteFile(file)}
               onShare={(method: string) => void handleShareFile(file, method)}
+              onToggleProtection={() => void handleFileProtection(file)}
               index={index}
             />
           )}

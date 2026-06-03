@@ -9,6 +9,7 @@ export interface fileFormat {
   extension?: string;
   url: string;
   uploadedAt: string | null;
+  protected: boolean;
 }
 
 export interface CurrentUser {
