@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
@@ -9,6 +7,7 @@ import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
 import MovieOutlinedIcon from '@mui/icons-material/MovieOutlined';
 import MusicNoteOutlinedIcon from '@mui/icons-material/MusicNoteOutlined';
@@ -16,15 +15,11 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
-import SecurityIcon from '@mui/icons-material/Security';
 
 import { toast } from 'sonner';
 
 import { CurrentUser, fileFormat, FileKind } from '../../lib/types/types';
-import DashboardTabs, {
-  DashboardTabId,
-  dashboardTabs,
-} from './components/DashboardTabs';
+import DashboardTabs, { DashboardTabId } from './components/DashboardTabs';
 import SignOutButton from './components/SignOutButton';
 import UploadButton from './components/UploadButton';
 import {
@@ -142,6 +137,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [deletingFileKey, setDeletingFileKey] = useState<string | null>(null);
   const [totalBytes, setTotalBytes] = useState(0);
   const [usedPercent, setUsePercent] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const fetchFiles = async () => {
     const result = await getFiles(user.accountId);
@@ -181,6 +177,15 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
 
     void fetchFiles();
   }, [user.accountId]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredFiles = useMemo(() => {
@@ -259,9 +264,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   );
 
   const SortFiles = (type: SortMode) => {
-    // const currentIndex = sortOrder.indexOf(sortMode);
-    // const nextIndex = (currentIndex + 1) % sortOrder.length;
-    //setSortMode(sortOrder[nextIndex]);
     setSortMode(type);
     setShowAllFiles(false);
     setSortMenuOpen(false);
@@ -279,17 +281,19 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       }
     } else if (method === 'email') {
       console.log('Sharing files');
-      const result = await shareFileViaEmail(
-        user.accountId,
-        file,
-        'zawlinthan2005@gmail.com'
-      );
+      // const result = await shareFileViaEmail(
+      //   user.accountId,
+      //   file,
+      //   'zawlinthan2005@gmail.com'
+      // );
 
-      if (result.success) {
-        toast.success('File shared successfully!');
-      } else {
-        toast.error(`Failed to share file: ${result.message}`);
-      }
+      // if (result.success) {
+      //   toast.success('File shared successfully!');
+      // } else {
+      //   toast.error(`Failed to share file: ${result.message}`);
+      // }
+      toast.success('File sharing via email is coming soon!');
+      setOpenFileMenuKey(null);
     }
   };
 
@@ -352,33 +356,31 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
         key={file.key}
         className="flex min-w-0 max-w-full items-center justify-between gap-3 px-5 py-4 transition hover:bg-black/[0.03]"
       >
-        <Link
-          className="min-w-0 flex-1"
+        <a
+          className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden"
           href={getFileUrl(file.url, file.extension ?? file.type)}
           rel="noreferrer"
           target="_blank"
           title={file.name}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+          <span
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${meta.tone}`}
+          >
+            <Icon fontSize="small" />
+          </span>
+          <span className="min-w-0 flex-1 overflow-hidden">
             <span
-              className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${meta.tone}`}
+              className={`block max-w-full truncate font-semibold leading-5 text-app ${getFileNameSizeClass(file.name)}`}
             >
-              <Icon fontSize="small" />
+              {file.name}
             </span>
-            <span className="min-w-0 flex-1 overflow-hidden">
-              <span
-                className={`block max-w-full truncate font-semibold leading-5 text-app ${getFileNameSizeClass(file.name)}`}
-              >
-                {file.name}
-              </span>
-              <span className="block max-w-full truncate text-sm text-muted">
-                {meta.label}
-                {file.extension ? ` · ${file.extension}` : ''} ·{' '}
-                {formatBytes(file.size)}
-              </span>
+            <span className="block max-w-full truncate text-sm text-muted">
+              {meta.label}
+              {file.extension ? ` · ${file.extension}` : ''} ·{' '}
+              {formatBytes(file.size)}
             </span>
-          </div>
-        </Link>
+          </span>
+        </a>
         {file.protected && (
           <ShieldOutlinedIcon className="text-muted" fontSize="small" />
         )}
@@ -415,9 +417,9 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     <main className="min-h-screen overflow-x-hidden bg-[var(--background)] px-4 pb-10 pt-24 sm:px-6 lg:px-8">
       <section className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[248px_minmax(0,1fr)]">
         <aside className="hidden min-h-[calc(100vh-7rem)] rounded-lg border border-app surface p-4 shadow-drop-1 lg:block">
-          <Link
-            href="/dashboard"
+          <a
             className="flex items-center gap-3 rounded-md bg-[var(--surface-soft)] p-3"
+            href="/dashboard"
           >
             <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-sm font-semibold text-white">
               {getInitials(user.fullName)}
@@ -430,7 +432,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 {user.email}
               </span>
             </span>
-          </Link>
+          </a>
 
           <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -461,15 +463,98 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           />
         </aside>
 
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button
+              aria-label="Close navigation menu"
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setMobileNavOpen(false)}
+              type="button"
+            />
+            <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-4 overflow-y-auto border-r border-app surface p-4 shadow-drop-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted">Menu</span>
+                <button
+                  aria-label="Close menu"
+                  className="grid h-9 w-9 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-app"
+                  onClick={() => setMobileNavOpen(false)}
+                  type="button"
+                >
+                  <CloseRoundedIcon fontSize="small" />
+                </button>
+              </div>
+              <a
+                className="flex items-center gap-3 rounded-md bg-[var(--surface-soft)] p-3"
+                href="/dashboard"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-md bg-accent text-sm font-semibold text-white">
+                  {getInitials(user.fullName)}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-app">
+                    {user.fullName}
+                  </span>
+                  <span className="block truncate text-xs text-muted">
+                    {user.email}
+                  </span>
+                </span>
+              </a>
+
+              <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+              <div className="rounded-md border border-app bg-[var(--surface-soft)] p-4">
+                <div className="flex items-center justify-between">
+                  <StorageOutlinedIcon
+                    className="text-accent"
+                    fontSize="small"
+                  />
+                  <span className="text-xs font-semibold text-muted">
+                    {usedPercent}%
+                  </span>
+                </div>
+                <p className="mt-3 text-sm font-semibold text-app">Storage</p>
+                <p className="mt-1 text-xs text-muted">
+                  {formatBytes(totalBytes)} of{' '}
+                  {formatBytes(STORAGE_LIMIT_BYTES)}
+                </p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${usedPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <UploadButton
+                uid={user.accountId}
+                onUploadComplete={fetchFiles}
+                total={totalBytes}
+                limit={STORAGE_LIMIT_BYTES}
+              />
+            </aside>
+          </div>
+        )}
+
         <section className="min-w-0">
           <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-accent">
-                Workspace dashboard
-              </p>
-              <h1 className="mt-1 truncate text-3xl font-semibold tracking-tight text-app sm:text-4xl">
-                Welcome back, {user.fullName && user.fullName.split(' ')[0]}.
-              </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                aria-label="Open navigation menu"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-app surface text-muted transition hover:bg-black/5 hover:text-app lg:hidden"
+                onClick={() => setMobileNavOpen(true)}
+                type="button"
+              >
+                <MenuRoundedIcon fontSize="small" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-accent">
+                  Workspace dashboard
+                </p>
+                <h1 className="mt-1 truncate text-3xl font-semibold tracking-tight text-app sm:text-4xl">
+                  Welcome back, {user.fullName && user.fullName.split(' ')[0]}.
+                </h1>
+              </div>
             </div>
 
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -504,30 +589,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
             </div>
           </div>
 
-          <div className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-            {dashboardTabs.map(({ icon: Icon, id, label }) => {
-              const isActive = activeTab === id;
-
-              return (
-                <button
-                  aria-pressed={isActive}
-                  className={`flex h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition ${
-                    isActive
-                      ? 'border-transparent bg-accent text-white'
-                      : 'border-app surface text-muted hover:bg-black/5 hover:text-app'
-                  }`}
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  type="button"
-                >
-                  <Icon fontSize="small" />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
             {[
               [
                 isSearching ? 'Matching files' : 'Total files',
@@ -535,8 +597,8 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 InsertDriveFileOutlinedIcon,
               ],
               ['Storage used', formatBytes(totalBytes), StorageOutlinedIcon],
-              ['Protected links', '0 active', ShieldOutlinedIcon],
-              ['Sync status', 'Healthy', CloudDoneOutlinedIcon],
+              // ['Protected links', '0 active', ShieldOutlinedIcon],
+              // ['Sync status', 'Healthy', CloudDoneOutlinedIcon],
             ].map(([label, value, Icon]) => (
               <article
                 className="rounded-lg border border-app surface p-5 shadow-drop-1"
@@ -782,10 +844,9 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                   stored R2 URL, and uploaded files remain scoped to this
                   account.
                 </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {[
                     ['Session check', 'Enabled'],
-                    ['Protected links', '0 active'],
                     ['Workspace access', user.email ?? 'Signed in'],
                   ].map(([label, value]) => (
                     <div

@@ -259,10 +259,7 @@ export const shareFileViaEmail = async (
   file: fileFormat,
   to: string
 ) => {
-  // send email with Resend
-
-  // include the name of sender and receiver
-  // add the file to the receiver's files list
+  // need to get a Domain Verified email address in Resend to send email
   const resend = new Resend(process.env.RESEND_API);
 
   const snap = await getDoc(doc(db, 'users', uid));
