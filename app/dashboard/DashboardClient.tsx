@@ -43,8 +43,6 @@ const sortLabels: Record<SortMode, string> = {
   size: 'Size',
 };
 
-const sortOrder: SortMode[] = ['recent', 'name', 'size'];
-
 const fileTypeMeta = {
   document: {
     icon: DescriptionOutlinedIcon,
@@ -684,7 +682,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
 
                 {filteredFiles.length > 0 ? (
                   <>
-                    <div className="min-w-0 divide-y divide-[var(--border)] overflow-hidden">
+                    <div className="min-w-0 divide-y divide-[var(--border)]">
                       {visibleFiles.map((file, index) =>
                         renderFileRow(file, index)
                       )}
