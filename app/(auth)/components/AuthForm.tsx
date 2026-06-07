@@ -112,6 +112,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
           return;
         } else {
           setBackendSuccessMsg(result.message);
+          console.log('Sign-in successful:', result);
         }
       } catch (error) {
         const errorCode = getFirebaseAuthCode(error);
