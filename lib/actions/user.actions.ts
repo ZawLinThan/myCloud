@@ -7,6 +7,8 @@ import {
 } from '../utils/session';
 import { setDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
+import { getStorageLimitBytes } from '../billing/storage-plans';
+import { serializeFiles } from '../utils/fileSerialization';
 
 const getVerifiedFirebaseUser = async (idToken: string) => {
   if (!idToken) {
@@ -66,7 +68,13 @@ export const createOrUpdateFirebaseUser = async ({
           avatar: decodedToken.picture ?? null,
           otpHash: null, // to verify the user for protected files
           otpExpiresAt: null,
-          ...(!userDocSnap.exists() ? { files: [] } : {}),
+          ...(!userDocSnap.exists()
+            ? {
+                files: [],
+                purchasedStorageGb: 0,
+                storageLimitBytes: getStorageLimitBytes(0),
+              }
+            : {}),
         },
         { merge: true }
       );
@@ -82,7 +90,15 @@ export const createOrUpdateFirebaseUser = async ({
         email: decodedToken.email,
         fullName: displayName,
         avatar: decodedToken.picture ?? null,
-        files: decodedToken.files,
+        files: userDocSnap.exists()
+          ? serializeFiles(userDocSnap.data().files)
+          : [],
+        purchasedStorageGb: userDocSnap.exists()
+          ? (userDocSnap.data().purchasedStorageGb ?? 0)
+          : 0,
+        storageLimitBytes: userDocSnap.exists()
+          ? (userDocSnap.data().storageLimitBytes ?? getStorageLimitBytes(0))
+          : getStorageLimitBytes(0),
       },
     };
   } catch (error) {

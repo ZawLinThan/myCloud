@@ -24,6 +24,8 @@ import { fileFormat } from '../types/types';
 import otpService from '../utils/otp';
 import { toast } from 'sonner';
 import { Resend } from 'resend';
+import { getStorageLimitBytes } from '../billing/storage-plans';
+import { getCurrentUser } from '../utils/session';
 
 const getFileExtension = (filename: string): string => {
   return filename.split('.').pop()?.toLowerCase() ?? '';
@@ -95,6 +97,36 @@ const getFileTypeFromMime = (mimeType: string): string => {
 export const uploadFile = async (formData: FormData) => {
   const file = formData.get('file') as File;
   const uid = formData.get('uid') as string;
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser || currentUser.accountId !== uid) {
+    return { success: false, message: 'You must be signed in to upload.' };
+  }
+
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+  const currentFiles =
+    snap.exists() && Array.isArray(snap.data().files) ? snap.data().files : [];
+  const totalBytes = currentFiles.reduce(
+    (sum: number, uploadedFile: fileFormat) => sum + (uploadedFile.size ?? 0),
+    0
+  );
+  const purchasedStorageGb =
+    snap.exists() && typeof snap.data().purchasedStorageGb === 'number'
+      ? snap.data().purchasedStorageGb
+      : 0;
+  const storageLimitBytes =
+    snap.exists() && typeof snap.data().storageLimitBytes === 'number'
+      ? snap.data().storageLimitBytes
+      : getStorageLimitBytes(purchasedStorageGb);
+
+  if (totalBytes + file.size > storageLimitBytes) {
+    return {
+      success: false,
+      message: 'Storage limit exceeded. Purchase more storage to continue.',
+    };
+  }
+
   const bytes = new Uint8Array(await file.arrayBuffer());
   const key = `${uid}/${Date.now()}_${file.name}`;
 
@@ -120,13 +152,14 @@ export const uploadFile = async (formData: FormData) => {
   };
 
   // Save metadata to Firestore
-  const userRef = doc(db, 'users', uid);
-  const snap = await getDoc(userRef);
-
   if (snap.exists()) {
     await updateDoc(userRef, { files: arrayUnion(fileData) });
   } else {
-    await setDoc(userRef, { files: [fileData] });
+    await setDoc(userRef, {
+      files: [fileData],
+      purchasedStorageGb: 0,
+      storageLimitBytes: getStorageLimitBytes(0),
+    });
   }
 
   return { success: true };

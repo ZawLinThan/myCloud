@@ -16,6 +16,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 
+import Link from 'next/link';
 import { toast } from 'sonner';
 
 import { CurrentUser, fileFormat, FileKind } from '../../lib/types/types';
@@ -25,14 +26,12 @@ import UploadButton from './components/UploadButton';
 import {
   deleteUploadedFile,
   getFiles,
-  shareFileViaEmail,
   toggleFileProtection,
 } from '@/lib/actions/file.actions';
 import { useEffect, useMemo, useState } from 'react';
 import FileDropDownMenu from './components/DropDownMenu/FileDropDownMenu';
 import FilterDropDownMenu from './components/DropDownMenu/FilterDropDownMenu';
 
-const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024; // 1GB
 const INITIAL_VISIBLE_FILE_COUNT = 5;
 
 type SortMode = 'recent' | 'name' | 'size';
@@ -123,13 +122,13 @@ const getFileNameSizeClass = (name: string) => {
 };
 
 export default function DashboardClientPage({ user }: { user: CurrentUser }) {
+  const storageLimitBytes = user.storageLimitBytes;
   const [files, setFiles] = useState<fileFormat[]>([]);
   const [activeTab, setActiveTab] = useState<DashboardTabId>('files');
   const [activeKind, setActiveKind] = useState<FileKind | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
-  const [openSortMenuKey, setOpenSortMenuKey] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
   const [deletingFileKey, setDeletingFileKey] = useState<string | null>(null);
@@ -144,7 +143,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     const fetchedFiles = Array.isArray(result.files) ? result.files : [];
     const total = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
     const percent = Math.min(
-      Math.round((total / STORAGE_LIMIT_BYTES) * 100),
+      Math.round((total / storageLimitBytes) * 100),
       100
     );
 
@@ -164,7 +163,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
         0
       );
       const percent = Math.min(
-        Math.round((total / STORAGE_LIMIT_BYTES) * 100),
+        Math.round((total / storageLimitBytes) * 100),
         100
       );
 
@@ -174,7 +173,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     };
 
     void fetchFiles();
-  }, [user.accountId]);
+  }, [storageLimitBytes, user.accountId]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
@@ -443,7 +442,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
             </div>
             <p className="mt-3 text-sm font-semibold text-app">Storage</p>
             <p className="mt-1 text-xs text-muted">
-              {formatBytes(totalBytes)} of {formatBytes(STORAGE_LIMIT_BYTES)}
+              {formatBytes(totalBytes)} of {formatBytes(storageLimitBytes)}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10">
               <div
@@ -451,13 +450,19 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 style={{ width: `${usedPercent}%` }}
               />
             </div>
+            <Link
+              className="mt-3 block text-xs font-semibold text-accent"
+              href="/dashboard/subscription"
+            >
+              Buy more storage
+            </Link>
           </div>
 
           <UploadButton
             uid={user.accountId}
             onUploadComplete={fetchFiles}
             total={totalBytes}
-            limit={STORAGE_LIMIT_BYTES}
+            limit={storageLimitBytes}
           />
         </aside>
 
@@ -513,8 +518,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 </div>
                 <p className="mt-3 text-sm font-semibold text-app">Storage</p>
                 <p className="mt-1 text-xs text-muted">
-                  {formatBytes(totalBytes)} of{' '}
-                  {formatBytes(STORAGE_LIMIT_BYTES)}
+                  {formatBytes(totalBytes)} of {formatBytes(storageLimitBytes)}
                 </p>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10">
                   <div
@@ -522,13 +526,20 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                     style={{ width: `${usedPercent}%` }}
                   />
                 </div>
+                <Link
+                  className="mt-3 block text-xs font-semibold text-accent"
+                  href="/dashboard/subscription"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  Buy more storage
+                </Link>
               </div>
 
               <UploadButton
                 uid={user.accountId}
                 onUploadComplete={fetchFiles}
                 total={totalBytes}
-                limit={STORAGE_LIMIT_BYTES}
+                limit={storageLimitBytes}
               />
             </aside>
           </div>
@@ -787,13 +798,15 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                     </h2>
                     <p className="mt-1 text-sm text-muted">
                       {formatBytes(totalBytes)} used of{' '}
-                      {formatBytes(STORAGE_LIMIT_BYTES)}
+                      {formatBytes(storageLimitBytes)}
                     </p>
                   </div>
-                  <StorageOutlinedIcon
-                    className="text-accent"
-                    fontSize="small"
-                  />
+                  <Link
+                    className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white shadow-drop-2"
+                    href="/dashboard/subscription"
+                  >
+                    Buy storage
+                  </Link>
                 </div>
 
                 <div className="mt-6 h-3 overflow-hidden rounded-full bg-black/10">

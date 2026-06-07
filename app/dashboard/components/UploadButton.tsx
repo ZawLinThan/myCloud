@@ -60,11 +60,25 @@ export default function UploadButton({
         formData.append('file', file);
         formData.append('uid', uid);
 
-        await toast.promise(uploadFile(formData), {
-          loading: `Uploading ${file.name}...`,
-          success: `${file.name} uploaded successfully`,
-          error: `Failed to upload ${file.name}`,
-        });
+        await toast.promise(
+          uploadFile(formData).then((result) => {
+            if (!result.success) {
+              throw new Error(
+                result.message || `Failed to upload ${file.name}`
+              );
+            }
+
+            return result;
+          }),
+          {
+            loading: `Uploading ${file.name}...`,
+            success: `${file.name} uploaded successfully`,
+            error: (error) =>
+              error instanceof Error
+                ? error.message
+                : `Failed to upload ${file.name}`,
+          }
+        );
       }
       onUploadComplete?.();
       event.target.value = '';

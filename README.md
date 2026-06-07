@@ -169,6 +169,9 @@ All variables live in `.env.local`. Variable names only — supply your own valu
 | `R2_ENDPOINT`                              | R2 S3-compatible endpoint                        |
 | `R2_BUCKET_NAME`                           | Target bucket                                    |
 | `R2_PUBLIC_URL`                            | Public URL prefix for serving uploaded files     |
+| `STRIPE_SECRET_KEY`                        | Stripe secret key for creating Checkout sessions |
+| `STRIPE_WEBHOOK_SECRET`                    | Stripe webhook signing secret                    |
+| `NEXT_PUBLIC_APP_URL`                      | Public app URL for Stripe success/cancel links   |
 
 ---
 

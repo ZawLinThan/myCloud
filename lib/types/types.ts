@@ -18,4 +18,6 @@ export interface CurrentUser {
   fullName: string;
   avatar: string | null;
   files: fileFormat[];
+  purchasedStorageGb: number;
+  storageLimitBytes: number;
 }
