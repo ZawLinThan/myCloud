@@ -2,7 +2,6 @@
 
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
-import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
@@ -29,7 +28,6 @@ export const dashboardTabs: DashboardTab[] = [
   { id: 'storage', label: 'Storage', icon: StorageOutlinedIcon },
   { id: 'starred', label: 'Starred', icon: StarBorderIcon },
   { id: 'trash', label: 'Trash', icon: RestoreFromTrashIcon },
-  { id: 'security', label: 'Security', icon: ShieldOutlinedIcon },
 ];
 
 export default function DashboardTabs({

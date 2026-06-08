@@ -9,7 +9,7 @@ import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { FileKind } from '@/lib/types/types';
 import { DashboardTabId } from '../components/DashboardTabs';
 
-export const INITIAL_VISIBLE_FILE_COUNT = 5;
+export const INITIAL_VISIBLE_FILE_COUNT = 4;
 
 export const fileTypeMeta = {
   document: {
@@ -101,30 +101,24 @@ export const getFileNameSizeClass = (name: string) => {
 };
 
 export const getContent = (type: DashboardTabId) => {
-  const dict: Record<DashboardTabId, { header: string; content: string }> = {
+  const dict: Record<DashboardTabId, { header: string }> = {
     files: {
       header: 'Recent files',
-      content: '',
     },
     folders: {
       header: 'Folders',
-      content: '',
     },
     storage: {
       header: 'Storage',
-      content: '',
     },
     security: {
       header: 'Security',
-      content: '',
     },
     starred: {
       header: 'Starred files',
-      content: '',
     },
     trash: {
       header: 'Trash Can',
-      content: '',
     },
   };
   return dict[type];

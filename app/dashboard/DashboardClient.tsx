@@ -1,7 +1,6 @@
 'use client';
 
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
-import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
@@ -10,7 +9,6 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
-import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -495,7 +493,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           </div>
 
           <div className="mt-5 divide-y divide-[var(--border)]">
-            {folderSummaries.slice(0, 5).map(({ count, size, type }) => {
+            {folderSummaries.slice(0, 5).map(({ size, type }) => {
               const meta = fileTypeMeta[type];
               const percent = totalBytes
                 ? Math.round((size / totalBytes) * 100)
@@ -518,38 +516,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           </div>
         </section>
       );
-    } else if (activeTab === 'security') {
-      return (
-        <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
-            <ShieldOutlinedIcon fontSize="small" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold text-app">
-            Account protected
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            Dashboard data is only rendered after the signed session is verified
-            on the server. File links open directly from the stored R2 URL, and
-            uploaded files remain scoped to this account.
-          </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {[
-              ['Session check', 'Enabled'],
-              ['Workspace access', user.email ?? 'Signed in'],
-            ].map(([label, value]) => (
-              <div
-                className="min-w-0 rounded-md border border-app bg-[var(--surface-soft)] p-4"
-                key={label}
-              >
-                <p className="text-sm font-medium text-muted">{label}</p>
-                <p className="mt-2 truncate text-sm font-semibold text-app">
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      );
     } else {
       return (
         <DashboardActiveTab
@@ -561,8 +527,9 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           filteredFiles={filteredFiles}
           activeKind={activeKind}
           hiddenFileCount={hiddenFileCount}
-          setSearchQuery={setSearchQuery}
+          folderSummaries={folderSummaries}
           setActiveKind={setActiveKind}
+          setActiveTab={setActiveTab}
           setShowAllFiles={setShowAllFiles}
           renderFileRow={renderFileRow}
           handleEmptyBin={handleEmptyBin}

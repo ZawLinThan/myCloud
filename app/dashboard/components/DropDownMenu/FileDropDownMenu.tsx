@@ -10,7 +10,6 @@ import { useState } from 'react';
 
 export default function FileDropDownMenu({
   trash,
-  isDeleting,
   onClose,
   onDelete,
   onRestore,
@@ -19,7 +18,6 @@ export default function FileDropDownMenu({
   index,
 }: {
   trash: boolean;
-  isDeleting: boolean;
   onClose: () => void;
   onDelete: () => void;
   onRestore: () => void;
