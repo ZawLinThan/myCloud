@@ -5,7 +5,10 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { toast } from 'sonner';
 
 import { ChangeEvent, useState } from 'react';
-import { uploadFile } from '@/lib/actions/file.actions';
+import {
+  getPresignedUploadUrl,
+  saveFileMetadata,
+} from '@/lib/actions/file.actions';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -32,20 +35,15 @@ export default function UploadButton({
 }) {
   const [isUploading, setUploading] = useState(false);
 
-  const handleFileUpload = async (
-    event: ChangeEvent<HTMLInputElement, HTMLInputElement>
-  ) => {
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files || files.length == 0) {
-      return;
-    }
+    if (!files || files.length === 0) return;
 
     const fileTotal = Array.from(files).reduce(
       (sum, file) => sum + file.size,
       0
     );
     if (total + fileTotal > limit) {
-      console.log(`total: ${total}, fileTotal: ${fileTotal}, limit: ${limit}`);
       toast.error(
         'Upload limit exceeded. Please delete some files before uploading new ones.'
       );
@@ -56,20 +54,48 @@ export default function UploadButton({
 
     try {
       for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('uid', uid);
-
         await toast.promise(
-          uploadFile(formData).then((result) => {
-            if (!result.success) {
+          (async () => {
+            // 1. Get presigned URL
+            const result = await getPresignedUploadUrl({
+              uid,
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+            });
+
+            if (!result.success || !result.url || !result.key) {
               throw new Error(
-                result.message || `Failed to upload ${file.name}`
+                result.message ?? `Failed to upload ${file.name}`
               );
             }
 
-            return result;
-          }),
+            // 2. Upload directly to R2
+            const uploadRes = await fetch(result.url, {
+              method: 'PUT',
+              body: file,
+              headers: { 'Content-Type': file.type },
+            });
+
+            if (!uploadRes.ok) {
+              throw new Error(`Upload to storage failed for ${file.name}`);
+            }
+
+            // 3. Save metadata to Firestore
+            const saveResult = await saveFileMetadata({
+              uid,
+              key: result.key,
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+            });
+
+            if (!saveResult.success) {
+              throw new Error(
+                saveResult.message ?? `Failed to save ${file.name}`
+              );
+            }
+          })(),
           {
             loading: `Uploading ${file.name}...`,
             success: `${file.name} uploaded successfully`,
@@ -80,14 +106,16 @@ export default function UploadButton({
           }
         );
       }
+
       onUploadComplete?.();
       event.target.value = '';
     } catch (error) {
-      console.log(error);
+      console.error(error);
     } finally {
       setUploading(false);
     }
   };
+
   return (
     <Button
       component="label"
@@ -97,9 +125,7 @@ export default function UploadButton({
       className="mt-5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-4 py-3 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5"
       sx={{
         backgroundColor: '#2563eb',
-        '&:hover': {
-          backgroundColor: '#1d4ed8',
-        },
+        '&:hover': { backgroundColor: '#1d4ed8' },
         padding: '12px 16px',
         marginTop: 5,
         minWidth: 'auto',

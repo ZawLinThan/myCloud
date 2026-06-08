@@ -94,11 +94,20 @@ const getFileTypeFromMime = (mimeType: string): string => {
   return 'other';
 };
 
-export const uploadFile = async (formData: FormData) => {
-  const file = formData.get('file') as File;
-  const uid = formData.get('uid') as string;
-  const currentUser = await getCurrentUser();
+// Replace the entire uploadFile function with these two:
 
+export const getPresignedUploadUrl = async ({
+  uid,
+  fileName,
+  fileType,
+  fileSize,
+}: {
+  uid: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}) => {
+  const currentUser = await getCurrentUser();
   if (!currentUser || currentUser.accountId !== uid) {
     return { success: false, message: 'You must be signed in to upload.' };
   }
@@ -120,40 +129,60 @@ export const uploadFile = async (formData: FormData) => {
       ? snap.data().storageLimitBytes
       : getStorageLimitBytes(purchasedStorageGb);
 
-  if (totalBytes + file.size > storageLimitBytes) {
+  if (totalBytes + fileSize > storageLimitBytes) {
     return {
       success: false,
       message: 'Storage limit exceeded. Purchase more storage to continue.',
     };
   }
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const key = `${uid}/${Date.now()}_${file.name}`;
-
-  await r2.send(
+  const key = `${uid}/${Date.now()}_${fileName}`;
+  const url = await getSignedUrl(
+    r2,
     new PutObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME!,
-      Key: key, // e.g. "uid_abc123/photo.jpg"
-      Body: bytes,
-      ContentType: file.type,
-      ContentDisposition: 'inline', // so it can be previewed in-browser instead of downloaded
-    })
+      Key: key,
+      ContentType: fileType,
+    }),
+    { expiresIn: 300 }
   );
 
+  return { success: true, url, key };
+};
+
+export const saveFileMetadata = async ({
+  uid,
+  key,
+  fileName,
+  fileSize,
+  fileType,
+}: {
+  uid: string;
+  key: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+}) => {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.accountId !== uid) {
+    return { success: false, message: 'You must be signed in to upload.' };
+  }
+
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+
   const fileData = {
-    name: file.name,
+    name: fileName,
     key,
-    size: file.size,
-    mimeType: file.type,
-    type: getFileTypeFromMime(file.type),
-    extension: getFileExtension(file.name),
+    size: fileSize,
+    mimeType: fileType,
+    type: getFileTypeFromMime(fileType),
+    extension: getFileExtension(fileName),
     uploadedAt: new Date().toISOString(),
-    //protected: false, // default to unprotected, can be updated later
-    starred: false, // default to unstarred, can be updated later
+    starred: false,
     trash: false,
   };
 
-  // Save metadata to Firestore
   if (snap.exists()) {
     await updateDoc(userRef, { files: arrayUnion(fileData) });
   } else {
