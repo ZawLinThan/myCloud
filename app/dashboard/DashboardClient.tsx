@@ -37,6 +37,7 @@ import {
   getUploadedTime,
   getFileNameSizeClass,
 } from './utils/dashboard.util';
+import DashboardActiveTab from './components/DashboardActiveTab';
 
 type SortMode = 'recent' | 'name' | 'size';
 
@@ -167,7 +168,12 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     });
   }, [activeKind, files, normalizedSearchQuery, sortMode]);
   const isSearching = normalizedSearchQuery.length > 0;
-  const isFilteringKind = activeKind !== 'all';
+  const isFilteringKind =
+    activeKind === 'audio' ||
+    activeKind === 'document' ||
+    activeKind === 'video' ||
+    activeKind === 'image' ||
+    activeKind === 'other';
   const visibleFiles = showAllFiles
     ? filteredFiles
     : filteredFiles.slice(0, INITIAL_VISIBLE_FILE_COUNT);
@@ -403,6 +409,167 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     );
   };
 
+  const renderActiveTab = () => {
+    if (activeTab === 'folders') {
+      return (
+        <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-app">Folders</h2>
+              <p className="mt-1 text-sm text-muted">
+                Smart folders grouped by file type
+              </p>
+            </div>
+            <FolderOutlinedIcon className="text-accent" fontSize="small" />
+          </div>
+
+          <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2">
+            {folderSummaries.map(({ count, latest, size, type }) => {
+              const meta = fileTypeMeta[type];
+              const Icon = meta.icon;
+
+              return (
+                <button
+                  className="min-w-0 rounded-lg border border-app bg-[var(--surface-soft)] p-4 text-left transition hover:border-[var(--accent)]"
+                  key={type}
+                  onClick={() => {
+                    setActiveKind(type);
+                    if (type === 'starred') {
+                      setActiveTab('starred');
+                    } else if (type === 'trash') {
+                      setActiveTab('trash');
+                    } else {
+                      setActiveTab('files');
+                    }
+                    setShowAllFiles(false);
+                  }}
+                  type="button"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${meta.tone}`}
+                    >
+                      <Icon fontSize="small" />
+                    </span>
+                    <span className="text-sm font-semibold text-muted">
+                      {count}
+                    </span>
+                  </div>
+                  <h3 className="mt-5 truncate text-sm font-semibold text-app">
+                    {meta.label}
+                  </h3>
+                  <p className="mt-1 truncate text-sm text-muted">
+                    {formatBytes(size)}
+                    {latest ? ` · Latest: ${latest.name}` : ''}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      );
+    } else if (activeTab === 'storage') {
+      return (
+        <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-app">Storage</h2>
+              <p className="mt-1 text-sm text-muted">
+                {formatBytes(totalBytes)} used of{' '}
+                {formatBytes(storageLimitBytes)}
+              </p>
+            </div>
+            <Link
+              className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white shadow-drop-2"
+              href="/dashboard/subscription"
+            >
+              Buy storage
+            </Link>
+          </div>
+
+          <div className="mt-6 h-3 overflow-hidden rounded-full bg-black/10">
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{ width: `${usedPercent}%` }}
+            />
+          </div>
+
+          <div className="mt-5 divide-y divide-[var(--border)]">
+            {folderSummaries.slice(0, 5).map(({ count, size, type }) => {
+              const meta = fileTypeMeta[type];
+              const percent = totalBytes
+                ? Math.round((size / totalBytes) * 100)
+                : 0;
+
+              return (
+                <div
+                  className="flex min-w-0 items-center justify-between gap-4 py-3"
+                  key={type}
+                >
+                  <span className="min-w-0 truncate text-sm font-medium text-app">
+                    {meta.label}
+                  </span>
+                  <span className="shrink-0 text-sm text-muted">
+                    {formatBytes(size)} · {percent}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      );
+    } else if (activeTab === 'security') {
+      return (
+        <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
+            <ShieldOutlinedIcon fontSize="small" />
+          </div>
+          <h2 className="mt-4 text-base font-semibold text-app">
+            Account protected
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            Dashboard data is only rendered after the signed session is verified
+            on the server. File links open directly from the stored R2 URL, and
+            uploaded files remain scoped to this account.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {[
+              ['Session check', 'Enabled'],
+              ['Workspace access', user.email ?? 'Signed in'],
+            ].map(([label, value]) => (
+              <div
+                className="min-w-0 rounded-md border border-app bg-[var(--surface-soft)] p-4"
+                key={label}
+              >
+                <p className="text-sm font-medium text-muted">{label}</p>
+                <p className="mt-2 truncate text-sm font-semibold text-app">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    } else {
+      return (
+        <DashboardActiveTab
+          activeTab={activeTab}
+          isSearching={isSearching}
+          isFilteringKind={isFilteringKind}
+          showAllFiles={showAllFiles}
+          visibleFiles={visibleFiles}
+          filteredFiles={filteredFiles}
+          activeKind={activeKind}
+          hiddenFileCount={hiddenFileCount}
+          setSearchQuery={setSearchQuery}
+          setActiveKind={setActiveKind}
+          setShowAllFiles={setShowAllFiles}
+          renderFileRow={renderFileRow}
+          handleEmptyBin={handleEmptyBin}
+        />
+      );
+    }
+  };
   return (
     <main className="min-h-screen overflow-x-hidden bg-[var(--background)] px-4 pb-10 pt-24 sm:px-6 lg:px-8">
       <section className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[248px_minmax(0,1fr)]">
@@ -585,7 +752,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               <button
                 aria-label={`Sort files by ${sortLabels[sortMode]}`}
                 className="flex h-10 items-center gap-2 rounded-md border border-app surface px-3 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app"
-                //onClick={cycleSortMode}
                 onClick={() => {
                   setSortMenuOpen((open) => !open);
                 }}
@@ -607,8 +773,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 InsertDriveFileOutlinedIcon,
               ],
               ['Storage used', formatBytes(totalBytes), StorageOutlinedIcon],
-              // ['Protected links', '0 active', ShieldOutlinedIcon],
-              // ['Sync status', 'Healthy', CloudDoneOutlinedIcon],
             ].map(([label, value, Icon]) => (
               <article
                 className="rounded-lg border border-app surface p-5 shadow-drop-1"
@@ -630,351 +794,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           </div>
 
           <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-            {activeTab === 'files' && (
-              <section className="min-w-0 rounded-lg border border-app surface shadow-drop-1">
-                <div className="flex min-w-0 items-start justify-between gap-4 border-b border-app px-5 py-4">
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-app">
-                      Recent files
-                    </h2>
-                    <p className="mt-1 truncate text-sm text-muted">
-                      {isSearching || isFilteringKind
-                        ? `Showing ${visibleFiles.length} of ${filteredFiles.length} matching file${filteredFiles.length === 1 ? '' : 's'}`
-                        : `Showing ${visibleFiles.length} of ${filteredFiles.length} latest upload${filteredFiles.length === 1 ? '' : 's'}`}
-                    </p>
-                  </div>
-                  {(isSearching || isFilteringKind) && (
-                    <button
-                      aria-label="Clear file filters"
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted hover:bg-black/5 hover:text-app"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setActiveKind('all');
-                        setShowAllFiles(false);
-                      }}
-                      type="button"
-                    >
-                      <CloseRoundedIcon fontSize="small" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex gap-2 overflow-x-auto border-b border-app px-5 py-3">
-                  {(
-                    ['all', ...Object.keys(fileTypeMeta)] as (
-                      | FileKind
-                      | 'all'
-                    )[]
-                  )
-                    .slice(0, 6)
-                    .map((type) => {
-                      const isActive = activeKind === type;
-                      const label =
-                        type === 'all'
-                          ? 'All'
-                          : fileTypeMeta[type as FileKind].label;
-
-                      return (
-                        <button
-                          className={`h-9 shrink-0 rounded-md border px-3 text-sm font-semibold transition ${
-                            isActive
-                              ? 'border-transparent bg-accent text-white'
-                              : 'border-app surface text-muted hover:bg-black/5 hover:text-app'
-                          }`}
-                          key={type}
-                          onClick={() => {
-                            setActiveKind(type);
-                            setShowAllFiles(false);
-                          }}
-                          type="button"
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                </div>
-
-                {filteredFiles.length > 0 ? (
-                  <>
-                    <div className="min-w-0 divide-y divide-[var(--border)]">
-                      {visibleFiles.map((file, index) =>
-                        renderFileRow(file, index)
-                      )}
-                    </div>
-                    {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
-                      <div className="border-t border-app px-5 py-4">
-                        <button
-                          className="flex h-10 w-full items-center justify-center rounded-md border border-app surface px-4 text-sm font-semibold text-accent transition hover:bg-black/5"
-                          onClick={() => setShowAllFiles((current) => !current)}
-                          type="button"
-                        >
-                          {showAllFiles
-                            ? 'Show fewer'
-                            : `More (${hiddenFileCount})`}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="px-5 py-12 text-center">
-                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
-                      <CloudDoneOutlinedIcon fontSize="medium" />
-                    </span>
-                    <h3 className="mt-4 text-base font-semibold text-app">
-                      {isSearching || isFilteringKind
-                        ? 'No matching files'
-                        : 'No files uploaded yet'}
-                    </h3>
-                    <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">
-                      {isSearching || isFilteringKind
-                        ? 'Try a different search or clear the type filter.'
-                        : 'This dashboard is connected to your account and ready for the upload flow when storage actions are added.'}
-                    </p>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {activeTab === 'folders' && (
-              <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-base font-semibold text-app">
-                      Folders
-                    </h2>
-                    <p className="mt-1 text-sm text-muted">
-                      Smart folders grouped by file type
-                    </p>
-                  </div>
-                  <FolderOutlinedIcon
-                    className="text-accent"
-                    fontSize="small"
-                  />
-                </div>
-
-                <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2">
-                  {folderSummaries.map(({ count, latest, size, type }) => {
-                    const meta = fileTypeMeta[type];
-                    const Icon = meta.icon;
-
-                    return (
-                      <button
-                        className="min-w-0 rounded-lg border border-app bg-[var(--surface-soft)] p-4 text-left transition hover:border-[var(--accent)]"
-                        key={type}
-                        onClick={() => {
-                          setActiveKind(type);
-                          if (type === 'starred') {
-                            setActiveTab('starred');
-                          } else if (type === 'trash') {
-                            setActiveTab('trash');
-                          } else {
-                            setActiveTab('files');
-                          }
-                          setShowAllFiles(false);
-                        }}
-                        type="button"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <span
-                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${meta.tone}`}
-                          >
-                            <Icon fontSize="small" />
-                          </span>
-                          <span className="text-sm font-semibold text-muted">
-                            {count}
-                          </span>
-                        </div>
-                        <h3 className="mt-5 truncate text-sm font-semibold text-app">
-                          {meta.label}
-                        </h3>
-                        <p className="mt-1 truncate text-sm text-muted">
-                          {formatBytes(size)}
-                          {latest ? ` · Latest: ${latest.name}` : ''}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {activeTab === 'storage' && (
-              <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-base font-semibold text-app">
-                      Storage
-                    </h2>
-                    <p className="mt-1 text-sm text-muted">
-                      {formatBytes(totalBytes)} used of{' '}
-                      {formatBytes(storageLimitBytes)}
-                    </p>
-                  </div>
-                  <Link
-                    className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white shadow-drop-2"
-                    href="/dashboard/subscription"
-                  >
-                    Buy storage
-                  </Link>
-                </div>
-
-                <div className="mt-6 h-3 overflow-hidden rounded-full bg-black/10">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${usedPercent}%` }}
-                  />
-                </div>
-
-                <div className="mt-5 divide-y divide-[var(--border)]">
-                  {folderSummaries.slice(0, 5).map(({ count, size, type }) => {
-                    const meta = fileTypeMeta[type];
-                    const percent = totalBytes
-                      ? Math.round((size / totalBytes) * 100)
-                      : 0;
-
-                    return (
-                      <div
-                        className="flex min-w-0 items-center justify-between gap-4 py-3"
-                        key={type}
-                      >
-                        <span className="min-w-0 truncate text-sm font-medium text-app">
-                          {meta.label}
-                        </span>
-                        <span className="shrink-0 text-sm text-muted">
-                          {formatBytes(size)} · {percent}%
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {activeTab === 'starred' && (
-              <section className="min-w-0 rounded-lg border border-app surface shadow-drop-1">
-                {filteredFiles.length > 0 ? (
-                  <>
-                    <div className="min-w-0 divide-y divide-[var(--border)]">
-                      {visibleFiles.map((file, index) =>
-                        renderFileRow(file, index)
-                      )}
-                    </div>
-                    {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
-                      <div className="border-t border-app px-5 py-4">
-                        <button
-                          className="flex h-10 w-full items-center justify-center rounded-md border border-app surface px-4 text-sm font-semibold text-accent transition hover:bg-black/5"
-                          onClick={() => setShowAllFiles((current) => !current)}
-                          type="button"
-                        >
-                          {showAllFiles
-                            ? 'Show fewer'
-                            : `More (${hiddenFileCount})`}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="px-5 py-12 text-center">
-                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
-                      <CloudDoneOutlinedIcon fontSize="medium" />
-                    </span>
-                    <h3 className="mt-4 text-base font-semibold text-app">
-                      No Starred files
-                    </h3>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {activeTab === 'trash' && (
-              <section className="min-w-0 rounded-lg border border-app surface shadow-drop-1">
-                <div className="flex min-w-0 items-start justify-between gap-4 border-b border-app px-5 py-4">
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-app">
-                      Trash Can
-                    </h2>
-                    <p className="mt-1 truncate text-sm text-muted">
-                      Showing {visibleFiles.length} of {filteredFiles.length}{' '}
-                      file{filteredFiles.length === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                  <div>
-                    <button
-                      className="mt-1.5 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5"
-                      //disabled={loadingPlanId !== null}
-                      onClick={handleEmptyBin}
-                      type="button"
-                    >
-                      Empty Bin
-                    </button>
-                  </div>
-                </div>
-                {filteredFiles.length > 0 ? (
-                  <>
-                    <div className="min-w-0 divide-y divide-[var(--border)]">
-                      {visibleFiles.map((file, index) =>
-                        renderFileRow(file, index)
-                      )}
-                    </div>
-                    {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
-                      <div className="border-t border-app px-5 py-4">
-                        <button
-                          className="flex h-10 w-full items-center justify-center rounded-md border border-app surface px-4 text-sm font-semibold text-accent transition hover:bg-black/5"
-                          onClick={() => setShowAllFiles((current) => !current)}
-                          type="button"
-                        >
-                          {showAllFiles
-                            ? 'Show fewer'
-                            : `More (${hiddenFileCount})`}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="px-5 py-12 text-center">
-                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
-                      <CloudDoneOutlinedIcon fontSize="medium" />
-                    </span>
-                    <h3 className="mt-4 text-base font-semibold text-app">
-                      No Files in Trash
-                    </h3>
-                  </div>
-                )}
-              </section>
-            )}
-            {activeTab === 'security' && (
-              <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
-                <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
-                  <ShieldOutlinedIcon fontSize="small" />
-                </div>
-                <h2 className="mt-4 text-base font-semibold text-app">
-                  Account protected
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                  Dashboard data is only rendered after the signed session is
-                  verified on the server. File links open directly from the
-                  stored R2 URL, and uploaded files remain scoped to this
-                  account.
-                </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {[
-                    ['Session check', 'Enabled'],
-                    ['Workspace access', user.email ?? 'Signed in'],
-                  ].map(([label, value]) => (
-                    <div
-                      className="min-w-0 rounded-md border border-app bg-[var(--surface-soft)] p-4"
-                      key={label}
-                    >
-                      <p className="text-sm font-medium text-muted">{label}</p>
-                      <p className="mt-2 truncate text-sm font-semibold text-app">
-                        {value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
+            {renderActiveTab()}
             <DashboardRight
               typeCounts={typeCounts}
               filteredFiles={filteredFiles}
