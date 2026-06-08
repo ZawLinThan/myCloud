@@ -9,16 +9,20 @@ import { ClickAwayListener } from '@mui/material';
 import { useState } from 'react';
 
 export default function FileDropDownMenu({
+  trash,
   isDeleting,
   onClose,
   onDelete,
+  onRestore,
   onShare,
   onToggleProtection,
   index,
 }: {
+  trash: boolean;
   isDeleting: boolean;
   onClose: () => void;
   onDelete: () => void;
+  onRestore: () => void;
   onShare: (method: string) => void;
   onToggleProtection: () => void;
   index: number;
@@ -43,22 +47,32 @@ export default function FileDropDownMenu({
 
         <button
           className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isDeleting}
           onClick={onDelete}
           type="button"
         >
           <DeleteOutlineRoundedIcon fontSize="small" />
-          {isDeleting ? 'Deleting...' : 'Delete'}
+          Delete
         </button>
 
-        <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-muted transition hover:bg-black/5 hover:text-app"
-          onClick={onToggleProtection}
-          type="button"
-        >
-          <StarBorderIcon fontSize="small" />
-          Star/ Unstar
-        </button>
+        {trash ? (
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-green-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={onRestore}
+            type="button"
+          >
+            <RestoreIcon fontSize="small" />
+            Restore
+          </button>
+        ) : (
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-muted transition hover:bg-black/5 hover:text-app"
+            onClick={onToggleProtection}
+            type="button"
+          >
+            <StarBorderIcon fontSize="small" />
+            Star/ Unstar
+          </button>
+        )}
 
         {shareMenuOpen && (
           <div className="absolute right-full top-0 mr-1 w-40 rounded-md border border-app surface py-1 shadow-drop-2 z-30">

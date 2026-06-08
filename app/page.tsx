@@ -8,6 +8,7 @@ import PlayCircleOutlineRoundedIcon from '@mui/icons-material/PlayCircleOutlineR
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
+import SortRoundedIcon from '@mui/icons-material/SortRounded';
 
 const folders = [
   { name: 'Design assets', files: '128 files', color: 'bg-blue-500' },
@@ -91,9 +92,8 @@ export default function Home() {
                 <button className="grid h-11 w-11 place-items-center rounded-md border border-app text-muted transition hover:bg-black/5 hover:text-app">
                   <SearchRoundedIcon fontSize="small" />
                 </button>
-                <button className="flex h-11 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-white shadow-drop-2">
-                  <AddRoundedIcon fontSize="small" />
-                  Upload
+                <button className="grid h-11 w-11 place-items-center rounded-md border border-app text-muted transition hover:bg-black/5 hover:text-app">
+                  <SortRoundedIcon fontSize="small" />
                 </button>
               </div>
             </div>

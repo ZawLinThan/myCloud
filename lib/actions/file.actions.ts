@@ -253,6 +253,7 @@ export const deleteUploadedFile = async ({
       files = files.filter((file: fileFormat) => file.key !== key);
     } else {
       files[fileIndex].trash = true;
+      files[fileIndex].starred = false;
     }
 
     await updateDoc(userRef, { files });
@@ -292,6 +293,27 @@ export const emptyBin = async (uid: string) => {
   deleteUploadedFile({ uid: uid, type: 'all' });
 };
 
+export const restoreFile = async (uid: string, key: string) => {
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    return { success: false, message: 'User not found.' };
+  }
+
+  const files = Array.isArray(snap.data().files) ? snap.data().files : [];
+  const fileIndex = files.findIndex((file: fileFormat) => file.key === key);
+
+  if (fileIndex === -1) {
+    return { success: false, message: 'File not found.' };
+  }
+
+  files[fileIndex].trash = false;
+
+  await updateDoc(userRef, { files });
+
+  return { success: true };
+};
 export const openProtectedFile = async (uid: string) => {
   // create OTP
   const otp = otpService.generateOtp();

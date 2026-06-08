@@ -2,20 +2,14 @@
 
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined';
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
-import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded';
-import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
-import MovieOutlinedIcon from '@mui/icons-material/MovieOutlined';
-import MusicNoteOutlinedIcon from '@mui/icons-material/MusicNoteOutlined';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
-import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
 import Link from 'next/link';
@@ -28,13 +22,21 @@ import UploadButton from './components/UploadButton';
 import {
   deleteUploadedFile,
   getFiles,
+  restoreFile,
   toggleFileStarred,
 } from '@/lib/actions/file.actions';
 import { useEffect, useMemo, useState } from 'react';
 import FileDropDownMenu from './components/DropDownMenu/FileDropDownMenu';
 import FilterDropDownMenu from './components/DropDownMenu/FilterDropDownMenu';
-
-const INITIAL_VISIBLE_FILE_COUNT = 5;
+import DashboardRight from './components/DashboardRight';
+import {
+  INITIAL_VISIBLE_FILE_COUNT,
+  fileTypeMeta,
+  formatBytes,
+  getInitials,
+  getUploadedTime,
+  getFileNameSizeClass,
+} from './utils/dashboard.util';
 
 type SortMode = 'recent' | 'name' | 'size';
 
@@ -42,95 +44,6 @@ const sortLabels: Record<SortMode, string> = {
   recent: 'Recent',
   name: 'Name',
   size: 'Size',
-};
-
-const fileTypeMeta = {
-  document: {
-    icon: DescriptionOutlinedIcon,
-    label: 'Documents',
-    tone: 'bg-blue-50 text-blue-700',
-  },
-  image: {
-    icon: ImageOutlinedIcon,
-    label: 'Images',
-    tone: 'bg-emerald-50 text-emerald-700',
-  },
-  video: {
-    icon: MovieOutlinedIcon,
-    label: 'Videos',
-    tone: 'bg-rose-50 text-rose-700',
-  },
-  audio: {
-    icon: MusicNoteOutlinedIcon,
-    label: 'Audio',
-    tone: 'bg-amber-50 text-amber-700',
-  },
-  other: {
-    icon: InsertDriveFileOutlinedIcon,
-    label: 'Other',
-    tone: 'bg-slate-100 text-slate-700',
-  },
-  starred: {
-    icon: StarBorderIcon,
-    label: 'Starred',
-    tone: 'bg-yellow-50 text-yellow-700',
-  },
-  trash: {
-    icon: RestoreFromTrashIcon,
-    label: 'Trash',
-    tone: 'bg-gray-50 text-gray-700',
-  },
-} satisfies Record<
-  FileKind,
-  { icon: typeof DescriptionOutlinedIcon; label: string; tone: string }
->;
-
-const formatBytes = (bytes = 0) => {
-  if (!bytes) {
-    return '0 B';
-  }
-
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const exponent = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1
-  );
-  const value = bytes / 1024 ** exponent;
-
-  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[exponent]}`;
-};
-
-const getInitials = (name: string) => {
-  if (!name) {
-    return 'User';
-  }
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
-};
-
-const getUploadedTime = (uploadedAt: string | null) => {
-  if (!uploadedAt) {
-    return 0;
-  }
-
-  const time = new Date(uploadedAt).getTime();
-  return Number.isNaN(time) ? 0 : time;
-};
-
-const getFileNameSizeClass = (name: string) => {
-  if (name.length > 72) {
-    return 'text-xs';
-  }
-
-  if (name.length > 44) {
-    return 'text-[13px]';
-  }
-
-  return 'text-sm';
 };
 
 export default function DashboardClientPage({ user }: { user: CurrentUser }) {
@@ -142,10 +55,10 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);
-  const [showAllStarredFiles, setShowAllStarredFiles] = useState(false);
   const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
   const [deletingFileKey, setDeletingFileKey] = useState<string | null>(null);
   const [totalBytes, setTotalBytes] = useState(0);
+  const [usage, setUsage] = useState(0);
   const [usedPercent, setUsePercent] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -162,6 +75,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
 
     setFiles(fetchedFiles);
     setTotalBytes(total);
+    setUsage(total);
     setUsePercent(percent);
   };
 
@@ -171,22 +85,37 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       if (!result.success) return;
 
       const fetchedFiles = Array.isArray(result.files) ? result.files : [];
-      const total = fetchedFiles.reduce(
+      let total = 0;
+      if (activeKind === 'starred') {
+        const filteredFiles = fetchedFiles.filter(
+          (file: fileFormat) => file.starred === true
+        );
+        total = filteredFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
+      } else if (activeKind === 'trash') {
+        const filteredFiles = fetchedFiles.filter(
+          (file: fileFormat) => file.trash === true
+        );
+        total = filteredFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
+      } else {
+        total = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
+      }
+      const usage = fetchedFiles.reduce(
         (sum, file) => sum + (file.size ?? 0),
         0
       );
       const percent = Math.min(
-        Math.round((total / storageLimitBytes) * 100),
+        Math.round((usage / storageLimitBytes) * 100),
         100
       );
 
       setFiles(fetchedFiles);
       setTotalBytes(total);
+      setUsage(usage);
       setUsePercent(percent);
     };
 
     void fetchFiles();
-  }, [storageLimitBytes, user.accountId]);
+  }, [storageLimitBytes, user.accountId, activeKind]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
@@ -200,37 +129,29 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredFiles = useMemo(() => {
     const matchingFiles = files.filter((file) => {
+      const matchesSearch = () => {
+        if (!normalizedSearchQuery) return true;
+        const searchableText = [
+          file.name,
+          file.type,
+          file.extension,
+          formatBytes(file.size),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return searchableText.includes(normalizedSearchQuery);
+      };
       if (activeKind !== 'trash' && activeKind !== 'starred') {
         if (file.trash === true) return false;
       }
+      if (activeKind === 'starred')
+        return file.starred === true && matchesSearch();
+      if (activeKind === 'trash') return file.trash === true && matchesSearch();
 
-      if (activeKind === 'starred') {
-        return file.starred === true;
-      }
+      if (activeKind !== 'all' && file.type !== activeKind) return false;
 
-      if (activeKind === 'trash') {
-        return file.trash === true;
-      }
-
-      if (activeKind !== 'all' && file.type !== activeKind) {
-        return false;
-      }
-
-      if (!normalizedSearchQuery) {
-        return true;
-      }
-
-      const searchableText = [
-        file.name,
-        file.type,
-        file.extension,
-        formatBytes(file.size),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      return searchableText.includes(normalizedSearchQuery);
+      return matchesSearch();
     });
 
     return [...matchingFiles].sort((a, b) => {
@@ -273,7 +194,14 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
 
   const folderSummaries = (Object.keys(fileTypeMeta) as FileKind[]).map(
     (type) => {
-      const typeFiles = files.filter((file) => file.type === type);
+      let typeFiles: fileFormat[] = [];
+      if (type === 'starred') {
+        typeFiles = files.filter((file) => file.starred === true);
+      } else if (type === 'trash') {
+        typeFiles = files.filter((file) => file.trash === true);
+      } else {
+        typeFiles = files.filter((file) => file.type === type);
+      }
       const total = typeFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
       const latest = typeFiles.reduce(
         (latestFile, file) =>
@@ -386,11 +314,19 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       deleteUploadedFile({ uid: user.accountId, type: 'all' }),
       {
         loading: `Emptying Trash Bin.`,
-        success: 'Bin successfully emptied.',
+        success: 'Bin successfully emptied',
         error: `Failed to empty the bin`,
       }
     );
-    deleteUploadedFile({ uid: user.accountId, type: 'all' });
+    await fetchFiles();
+  };
+
+  const handleRestoreFile = async (file: fileFormat) => {
+    await toast.promise(restoreFile(user.accountId, file.key), {
+      loading: `Restoring ${file.name}`,
+      success: `${file.name} restored successfully`,
+      error: `Failed to restore ${file.name}`,
+    });
     await fetchFiles();
   };
 
@@ -452,9 +388,11 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           </button>
           {openFileMenuKey === file.key && (
             <FileDropDownMenu
+              trash={file.trash}
               isDeleting={deletingFileKey === file.key}
               onClose={() => setOpenFileMenuKey(null)}
               onDelete={() => void handleDeleteFile(file)}
+              onRestore={() => void handleRestoreFile(file)}
               onShare={(method: string) => void handleShareFile(file, method)}
               onToggleProtection={() => void handleFileStarred(file)}
               index={index}
@@ -501,7 +439,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
             </div>
             <p className="mt-3 text-sm font-semibold text-app">Storage</p>
             <p className="mt-1 text-xs text-muted">
-              {formatBytes(totalBytes)} of {formatBytes(storageLimitBytes)}
+              {formatBytes(usage)} of {formatBytes(storageLimitBytes)}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10">
               <div
@@ -825,7 +763,13 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                         key={type}
                         onClick={() => {
                           setActiveKind(type);
-                          setActiveTab('files');
+                          if (type === 'starred') {
+                            setActiveTab('starred');
+                          } else if (type === 'trash') {
+                            setActiveTab('trash');
+                          } else {
+                            setActiveTab('files');
+                          }
                           setShowAllFiles(false);
                         }}
                         type="button"
@@ -882,7 +826,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 </div>
 
                 <div className="mt-5 divide-y divide-[var(--border)]">
-                  {folderSummaries.map(({ count, size, type }) => {
+                  {folderSummaries.slice(0, 5).map(({ count, size, type }) => {
                     const meta = fileTypeMeta[type];
                     const percent = totalBytes
                       ? Math.round((size / totalBytes) * 100)
@@ -897,7 +841,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                           {meta.label}
                         </span>
                         <span className="shrink-0 text-sm text-muted">
-                          {formatBytes(size)} · {count} · {percent}%
+                          {formatBytes(size)} · {percent}%
                         </span>
                       </div>
                     );
@@ -1031,56 +975,10 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               </section>
             )}
 
-            <aside className="space-y-6">
-              <section className="rounded-lg border border-app surface p-5 shadow-drop-1">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-semibold text-app">File mix</h2>
-                  <GridViewRoundedIcon
-                    className="text-accent"
-                    fontSize="small"
-                  />
-                </div>
-                <div className="mt-5 space-y-4">
-                  {(Object.keys(fileTypeMeta) as FileKind[]).map((type) => {
-                    const count = typeCounts[type];
-                    const percent = filteredFiles.length
-                      ? Math.round((count / filteredFiles.length) * 100)
-                      : 0;
-                    const meta = fileTypeMeta[type];
-
-                    return (
-                      <div key={type}>
-                        <div className="flex justify-between gap-4 text-sm">
-                          <span className="font-medium text-app">
-                            {meta.label}
-                          </span>
-                          <span className="text-muted">{count}</span>
-                        </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/10">
-                          <div
-                            className="h-full rounded-full bg-accent"
-                            style={{ width: `${percent}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* <section className="rounded-lg border border-app surface p-5 shadow-drop-1">
-                <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
-                  <ShieldOutlinedIcon fontSize="small" />
-                </div>
-                <h2 className="mt-4 text-base font-semibold text-app">
-                  Account protected
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  This route verifies the signed session cookie on the server
-                  before any workspace data is shown.
-                </p>
-              </section> */}
-            </aside>
+            <DashboardRight
+              typeCounts={typeCounts}
+              filteredFiles={filteredFiles}
+            />
           </div>
         </section>
       </section>
