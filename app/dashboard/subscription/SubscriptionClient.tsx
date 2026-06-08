@@ -2,6 +2,8 @@
 
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -72,29 +74,28 @@ export default function SubscriptionClient({
 
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 pb-12 pt-24 sm:px-6 lg:px-8">
-      <section className="mx-auto max-w-6xl">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-accent">Storage add-ons</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-app sm:text-4xl">
-              Buy more room for your files.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-              Extra storage is added to your account after Stripe confirms
-              payment. Your current allowance is{' '}
-              <span className="font-semibold text-app">
-                {formatBytes(user.storageLimitBytes)}
-              </span>
-              .
-            </p>
-          </div>
+      <section className="mx-auto max-w-2xl">
+        <Link
+          className="inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-app mb-8"
+          href="/dashboard"
+        >
+          <ArrowBackRoundedIcon style={{ fontSize: 16 }} />
+          Back to dashboard
+        </Link>
 
-          <Link
-            className="inline-flex h-10 items-center justify-center rounded-md border border-app surface px-4 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app"
-            href="/dashboard"
-          >
-            Back to dashboard
-          </Link>
+        <div>
+          <p className="text-sm font-semibold text-accent">Storage add-ons</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-app sm:text-4xl">
+            Buy more room for your files.
+          </h1>
+          <p className="mt-3  text-sm leading-6 text-muted">
+            Extra storage is added to your account after Stripe confirms
+            payment. Your current allowance is{' '}
+            <span className="font-semibold text-app">
+              {formatBytes(user.storageLimitBytes)}
+            </span>
+            .
+          </p>
         </div>
 
         {checkoutStatus === 'success' && (
@@ -110,92 +111,71 @@ export default function SubscriptionClient({
           </div>
         )}
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="grid gap-5 md:grid-cols-2">
-            {storagePlans.map((plan) => {
-              const isLoading = loadingPlanId === plan.id;
+        <div className="mt-8 grid gap-5 md:grid-cols-2 max-w-2xl mx-auto">
+          {storagePlans.map((plan, index) => {
+            const isLoading = loadingPlanId === plan.id;
+            const isBestValue = index === storagePlans.length - 1;
 
-              return (
-                <article
-                  className="flex flex-col rounded-lg border border-app surface p-6 shadow-drop-1"
-                  key={plan.id}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="grid h-11 w-11 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
-                      <StorageOutlinedIcon />
-                    </span>
-                    <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-accent">
-                      +{plan.additionalGb} GB
-                    </span>
-                  </div>
+            return (
+              <article
+                className={`relative flex flex-col rounded-lg border surface p-6 shadow-drop-1 ${
+                  isBestValue ? 'border-accent border-2' : 'border-app'
+                }`}
+                key={plan.id}
+              >
+                {isBestValue && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-white whitespace-nowrap">
+                    Best value
+                  </span>
+                )}
 
-                  <h2 className="mt-6 text-xl font-semibold text-app">
-                    {plan.name}
-                  </h2>
-                  <p className="mt-2 min-h-12 text-sm leading-6 text-muted">
-                    {plan.description}
-                  </p>
-                  <p className="mt-6 text-4xl font-semibold tracking-tight text-app">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
+                    <StorageOutlinedIcon />
+                  </span>
+                  <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-accent">
+                    +{plan.additionalGb} GB
+                  </span>
+                </div>
+
+                <h2 className="mt-6 text-xl font-semibold text-app">
+                  {plan.name}
+                </h2>
+                <p className="mt-2 flex-1 text-sm leading-6 text-muted">
+                  {plan.description}
+                </p>
+
+                <div className="mt-6">
+                  <p className="text-4xl font-semibold tracking-tight text-app">
                     {formatPrice(plan.priceCents)}
                   </p>
                   <p className="mt-1 text-xs font-medium text-muted">
                     One-time purchase
                   </p>
+                </div>
 
-                  <button
-                    className="mt-6 inline-flex h-11 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
-                    disabled={loadingPlanId !== null}
-                    onClick={() => void handleCheckout(plan.id)}
-                    type="button"
-                  >
-                    {isLoading ? 'Opening Stripe…' : 'Purchase with Stripe'}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
+                <button
+                  className="mt-6 inline-flex h-11 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                  disabled={loadingPlanId !== null}
+                  onClick={() => void handleCheckout(plan.id)}
+                  type="button"
+                >
+                  {isLoading ? 'Opening Stripe…' : 'Purchase with Stripe'}
+                </button>
+              </article>
+            );
+          })}
+        </div>
 
-          <aside className="rounded-lg border border-app surface p-6 shadow-drop-1">
-            <span className="grid h-11 w-11 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
-              <CloudUploadOutlinedIcon />
-            </span>
-            <h2 className="mt-5 text-lg font-semibold text-app">
-              Your storage
-            </h2>
-            <div className="mt-5 space-y-4 text-sm">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted">Current limit</span>
-                <span className="font-semibold text-app">
-                  {formatBytes(user.storageLimitBytes)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted">Purchased add-ons</span>
-                <span className="font-semibold text-app">
-                  {user.purchasedStorageGb} GB
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-md bg-[var(--surface-soft)] p-4">
-              <p className="flex items-start gap-2 text-sm font-medium leading-6 text-app">
-                <CheckCircleOutlineRoundedIcon
-                  className="mt-0.5 text-accent"
-                  fontSize="small"
-                />
-                Webhooks apply storage automatically and safely ignore duplicate
-                Stripe events.
-              </p>
-            </div>
-
-            <button
-              className="mt-4 text-sm font-semibold text-accent"
-              onClick={() => router.refresh()}
-              type="button"
-            >
-              Refresh storage limit
-            </button>
-          </aside>
+        <div className="mt-6 max-w-2xl mx-auto flex items-center gap-3 rounded-lg border border-app bg-[var(--surface-soft)] px-4 py-3">
+          <ShieldOutlinedIcon
+            className="text-accent shrink-0"
+            fontSize="small"
+          />
+          <p className="text-sm text-muted">
+            Payments processed securely by Stripe. Storage is added
+            automatically after payment is confirmed.
+          </p>
         </div>
       </section>
     </main>

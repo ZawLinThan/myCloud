@@ -66,15 +66,29 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     if (!result.success) return;
 
     const fetchedFiles = Array.isArray(result.files) ? result.files : [];
-    const total = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
+
+    let total = 0;
+    if (activeKind === 'starred') {
+      total = fetchedFiles
+        .filter((file) => file.starred === true)
+        .reduce((sum, file) => sum + (file.size ?? 0), 0);
+    } else if (activeKind === 'trash') {
+      total = fetchedFiles
+        .filter((file) => file.trash === true)
+        .reduce((sum, file) => sum + (file.size ?? 0), 0);
+    } else {
+      total = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
+    }
+
+    const usage = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
     const percent = Math.min(
-      Math.round((total / storageLimitBytes) * 100),
+      Math.round((usage / storageLimitBytes) * 100),
       100
     );
 
     setFiles(fetchedFiles);
     setTotalBytes(total);
-    setUsage(total);
+    setUsage(usage);
     setUsePercent(percent);
   };
 
@@ -393,7 +407,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
           {openFileMenuKey === file.key && (
             <FileDropDownMenu
               trash={file.trash}
-              isDeleting={deletingFileKey === file.key}
               onClose={() => setOpenFileMenuKey(null)}
               onDelete={() => void handleDeleteFile(file)}
               onRestore={() => void handleRestoreFile(file)}
@@ -727,7 +740,12 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 <SortRoundedIcon fontSize="small" />
                 <span className="hidden sm:inline">{sortLabels[sortMode]}</span>
               </button>
-              {sortMenuOpen && <FilterDropDownMenu sortFunction={SortFiles} />}
+              {sortMenuOpen && (
+                <FilterDropDownMenu
+                  sortFunction={SortFiles}
+                  onClose={() => setSortMenuOpen(false)}
+                />
+              )}
               <SignOutButton />
             </div>
           </div>
@@ -742,7 +760,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               ['Storage used', formatBytes(totalBytes), StorageOutlinedIcon],
             ].map(([label, value, Icon]) => (
               <article
-                className="rounded-lg border border-app surface p-5 shadow-drop-1"
+                className="rounded-lg border border-app surface p-5 shadow-drop-1 "
                 key={label as string}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -753,7 +771,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                     <Icon fontSize="small" />
                   </span>
                 </div>
-                <p className="mt-4 text-2xl font-semibold text-app">
+                <p className="text-2xl font-semibold text-app">
                   {value as string}
                 </p>
               </article>

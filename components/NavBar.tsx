@@ -7,12 +7,6 @@ import CloudQueueOutlinedIcon from '@mui/icons-material/CloudQueueOutlined';
 import LanguageIcon from '@mui/icons-material/Language';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 
-const rootNavigation = [
-  { href: '/#products', label: 'Products' },
-  { href: '/#features', label: 'Features' },
-  { href: '/#support', label: 'Support' },
-];
-
 const NavBar = () => {
   const pathName = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,6 +27,31 @@ const NavBar = () => {
             </span>
           </Link>
 
+          {isAuthPage && (
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Link
+                href="/sign-in"
+                className="hidden rounded-md px-3 py-2 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app md:block"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="hidden rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5 md:block"
+              >
+                Sign up
+              </Link>
+              <button
+                aria-expanded={isMenuOpen}
+                aria-label="Open menu"
+                className="grid h-10 w-10 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-app md:hidden"
+                onClick={() => setIsMenuOpen((current) => !current)}
+                type="button"
+              >
+                <MenuRoundedIcon fontSize="small" />
+              </button>
+            </div>
+          )}
           {isDashboardPage ? (
             <div className="flex items-center gap-2">
               <Link
@@ -51,17 +70,6 @@ const NavBar = () => {
             </button>
           ) : (
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden items-center gap-6 text-sm font-medium md:flex">
-                {rootNavigation.map((item) => (
-                  <Link
-                    href={item.href}
-                    className="text-muted transition hover:text-app"
-                    key={item.href}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
               <Link
                 href="/sign-in"
                 className="hidden rounded-md px-3 py-2 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app md:block"
@@ -89,16 +97,6 @@ const NavBar = () => {
 
         {!isAuthPage && !isDashboardPage && isMenuOpen && (
           <div className="mt-3 rounded-md border border-app bg-[var(--surface)] p-2 shadow-drop-2 md:hidden">
-            {rootNavigation.map((item) => (
-              <Link
-                className="block rounded-md px-3 py-2 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app"
-                href={item.href}
-                key={item.href}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
             <div className="my-2 h-px bg-[var(--border)]" />
             <Link
               className="block rounded-md px-3 py-2 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app"

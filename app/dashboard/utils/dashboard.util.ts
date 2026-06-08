@@ -9,7 +9,7 @@ import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { FileKind } from '@/lib/types/types';
 import { DashboardTabId } from '../components/DashboardTabs';
 
-export const INITIAL_VISIBLE_FILE_COUNT = 4;
+export const INITIAL_VISIBLE_FILE_COUNT = 3;
 
 export const fileTypeMeta = {
   document: {

@@ -4,12 +4,16 @@ type SortMode = 'recent' | 'name' | 'size';
 
 interface FilterDropDownMenuProps {
   sortFunction: (type: SortMode) => void;
+  onClose: () => void;
 }
 
-const FilterDropDownMenu = ({ sortFunction }: FilterDropDownMenuProps) => {
+const FilterDropDownMenu = ({
+  sortFunction,
+  onClose,
+}: FilterDropDownMenuProps) => {
   const className = `absolute right-0 top-15 z-20 w-48 mr-5 overflow-hidden rounded-md border border-app surface py-1 shadow-drop-2`;
   return (
-    <ClickAwayListener onClickAway={() => {}}>
+    <ClickAwayListener onClickAway={onClose}>
       <div className={className}>
         <div className="flex items-center">
           <button

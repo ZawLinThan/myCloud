@@ -10,8 +10,8 @@ interface DashboardRightProps {
 
 const DashboardRight = ({ typeCounts, filteredFiles }: DashboardRightProps) => {
   return (
-    <aside className="space-y-6">
-      <section className="rounded-lg border border-app surface p-5 shadow-drop-1">
+    <aside className="h-full">
+      <section className="rounded-lg border border-app surface p-5 shadow-drop-1 h-full">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-app">File mix</h2>
           <GridViewRoundedIcon className="text-accent" fontSize="small" />
