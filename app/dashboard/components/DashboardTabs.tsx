@@ -27,9 +27,9 @@ export const dashboardTabs: DashboardTab[] = [
   { id: 'files', label: 'My files', icon: GridViewRoundedIcon },
   { id: 'folders', label: 'Folders', icon: FolderOutlinedIcon },
   { id: 'storage', label: 'Storage', icon: StorageOutlinedIcon },
-  { id: 'security', label: 'Security', icon: ShieldOutlinedIcon },
   { id: 'starred', label: 'Starred', icon: StarBorderIcon },
   { id: 'trash', label: 'Trash', icon: RestoreFromTrashIcon },
+  { id: 'security', label: 'Security', icon: ShieldOutlinedIcon },
 ];
 
 export default function DashboardTabs({

@@ -16,6 +16,7 @@ import StarBorderIcon from '@mui/icons-material/StarBorder';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -342,7 +343,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   };
 
   const handleDeleteFile = async (file: fileFormat) => {
-    const shouldDelete = window.confirm(`Delete "${file.name}"?`);
+    const shouldDelete = window.confirm(`Move "${file.name}" to the bin?`);
 
     if (!shouldDelete) {
       return;
@@ -352,7 +353,11 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
 
     try {
       await toast.promise(
-        deleteUploadedFile({ key: file.key, uid: user.accountId }),
+        deleteUploadedFile({
+          key: file.key,
+          uid: user.accountId,
+          type: 'single',
+        }),
         {
           loading: `Deleting ${file.name}...`,
           success: file.trash
@@ -369,6 +374,24 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       setDeletingFileKey(null);
       setOpenFileMenuKey(null);
     }
+  };
+
+  const handleEmptyBin = async () => {
+    const shouldDelete = window.confirm(`Empty Trash Bin?`);
+
+    if (!shouldDelete) {
+      return;
+    }
+    await toast.promise(
+      deleteUploadedFile({ uid: user.accountId, type: 'all' }),
+      {
+        loading: `Emptying Trash Bin.`,
+        success: 'Bin successfully emptied.',
+        error: `Failed to empty the bin`,
+      }
+    );
+    deleteUploadedFile({ uid: user.accountId, type: 'all' });
+    await fetchFiles();
   };
 
   const renderFileRow = (file: fileFormat, index: number) => {
@@ -921,6 +944,27 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
 
             {activeTab === 'trash' && (
               <section className="min-w-0 rounded-lg border border-app surface shadow-drop-1">
+                <div className="flex min-w-0 items-start justify-between gap-4 border-b border-app px-5 py-4">
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-app">
+                      Trash Can
+                    </h2>
+                    <p className="mt-1 truncate text-sm text-muted">
+                      Showing {visibleFiles.length} of {filteredFiles.length}{' '}
+                      file{filteredFiles.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <div>
+                    <button
+                      className="mt-1.5 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5"
+                      //disabled={loadingPlanId !== null}
+                      onClick={handleEmptyBin}
+                      type="button"
+                    >
+                      Empty Bin
+                    </button>
+                  </div>
+                </div>
                 {filteredFiles.length > 0 ? (
                   <>
                     <div className="min-w-0 divide-y divide-[var(--border)]">
@@ -954,7 +998,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 )}
               </section>
             )}
-            {/* {activeTab === 'security' && (
+            {activeTab === 'security' && (
               <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
                 <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
                   <ShieldOutlinedIcon fontSize="small" />
@@ -985,7 +1029,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                   ))}
                 </div>
               </section>
-            )} */}
+            )}
 
             <aside className="space-y-6">
               <section className="rounded-lg border border-app surface p-5 shadow-drop-1">

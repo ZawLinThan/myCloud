@@ -203,9 +203,11 @@ export const getFiles = async (uid: string) => {
 export const deleteUploadedFile = async ({
   uid,
   key,
+  type,
 }: {
   uid: string;
-  key: string;
+  key?: string;
+  type: 'single' | 'all';
 }) => {
   const userRef = doc(db, 'users', uid);
   const snap = await getDoc(userRef);
@@ -214,35 +216,50 @@ export const deleteUploadedFile = async ({
     return { success: false, message: 'User not found.' };
   }
 
-  const files = Array.isArray(snap.data().files) ? snap.data().files : [];
-  const fileExists = files.some((file: fileFormat) => file.key === key);
-  const fileIndex = files.findIndex((file: fileFormat) => file.key === key);
+  let files = Array.isArray(snap.data().files) ? snap.data().files : [];
 
-  if (fileIndex === -1) {
-    return { success: false, message: 'File not found.' };
-  }
-  if (!fileExists) {
-    return { success: false, message: 'File not found.' };
-  }
+  if (type === 'all') {
+    // Delete all trashed files from R2 and Firestore
+    const trashedFiles = files.filter((file: fileFormat) => file.trash);
 
-  if (files[fileIndex].trash) {
-    await r2.send(
-      new DeleteObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME!,
-        Key: key,
-      })
+    await Promise.all(
+      trashedFiles.map((file: fileFormat) =>
+        r2.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME!,
+            Key: file.key,
+          })
+        )
+      )
     );
 
-    await updateDoc(userRef, {
-      files: files.filter((file: fileFormat) => file.key !== key),
-    });
+    files = files.filter((file: fileFormat) => !file.trash);
+    await updateDoc(userRef, { files });
   } else {
-    files[fileIndex].trash = true;
+    // Single delete
+    const fileIndex = files.findIndex((file: fileFormat) => file.key === key);
+
+    if (fileIndex === -1) {
+      return { success: false, message: 'File not found.' };
+    }
+
+    if (files[fileIndex].trash) {
+      await r2.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME!,
+          Key: key,
+        })
+      );
+      files = files.filter((file: fileFormat) => file.key !== key);
+    } else {
+      files[fileIndex].trash = true;
+    }
+
     await updateDoc(userRef, { files });
   }
+
   return { success: true };
 };
-
 export const toggleFileStarred = async ({
   uid,
   key,
@@ -269,6 +286,10 @@ export const toggleFileStarred = async ({
   await updateDoc(userRef, { files });
 
   return { success: true };
+};
+
+export const emptyBin = async (uid: string) => {
+  deleteUploadedFile({ uid: uid, type: 'all' });
 };
 
 export const openProtectedFile = async (uid: string) => {
