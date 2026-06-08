@@ -2,9 +2,10 @@
 
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import IosShareRoundedIcon from '@mui/icons-material/IosShareRounded';
-import SecurityIcon from '@mui/icons-material/Security';
-
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import RestoreIcon from '@mui/icons-material/Restore';
 import { ClickAwayListener } from '@mui/material';
+
 import { useState } from 'react';
 
 export default function FileDropDownMenu({
@@ -55,8 +56,8 @@ export default function FileDropDownMenu({
           onClick={onToggleProtection}
           type="button"
         >
-          <SecurityIcon fontSize="small" />
-          Protected/ Unprotected
+          <StarBorderIcon fontSize="small" />
+          Star/ Unstar
         </button>
 
         {shareMenuOpen && (

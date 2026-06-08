@@ -148,7 +148,9 @@ export const uploadFile = async (formData: FormData) => {
     type: getFileTypeFromMime(file.type),
     extension: getFileExtension(file.name),
     uploadedAt: new Date().toISOString(),
-    protected: false, // default to unprotected, can be updated later
+    //protected: false, // default to unprotected, can be updated later
+    starred: false, // default to unstarred, can be updated later
+    trash: false,
   };
 
   // Save metadata to Firestore
@@ -214,26 +216,34 @@ export const deleteUploadedFile = async ({
 
   const files = Array.isArray(snap.data().files) ? snap.data().files : [];
   const fileExists = files.some((file: fileFormat) => file.key === key);
+  const fileIndex = files.findIndex((file: fileFormat) => file.key === key);
 
+  if (fileIndex === -1) {
+    return { success: false, message: 'File not found.' };
+  }
   if (!fileExists) {
     return { success: false, message: 'File not found.' };
   }
 
-  await r2.send(
-    new DeleteObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME!,
-      Key: key,
-    })
-  );
+  if (files[fileIndex].trash) {
+    await r2.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME!,
+        Key: key,
+      })
+    );
 
-  await updateDoc(userRef, {
-    files: files.filter((file: fileFormat) => file.key !== key),
-  });
-
+    await updateDoc(userRef, {
+      files: files.filter((file: fileFormat) => file.key !== key),
+    });
+  } else {
+    files[fileIndex].trash = true;
+    await updateDoc(userRef, { files });
+  }
   return { success: true };
 };
 
-export const toggleFileProtection = async ({
+export const toggleFileStarred = async ({
   uid,
   key,
 }: {
@@ -254,7 +264,7 @@ export const toggleFileProtection = async ({
     return { success: false, message: 'File not found.' };
   }
 
-  files[fileIndex].protected = !files[fileIndex].protected;
+  files[fileIndex].starred = !files[fileIndex].starred;
 
   await updateDoc(userRef, { files });
 

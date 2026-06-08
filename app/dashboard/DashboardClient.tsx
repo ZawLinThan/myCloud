@@ -12,9 +12,10 @@ import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
 import MovieOutlinedIcon from '@mui/icons-material/MovieOutlined';
 import MusicNoteOutlinedIcon from '@mui/icons-material/MusicNoteOutlined';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
+import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ import UploadButton from './components/UploadButton';
 import {
   deleteUploadedFile,
   getFiles,
-  toggleFileProtection,
+  toggleFileStarred,
 } from '@/lib/actions/file.actions';
 import { useEffect, useMemo, useState } from 'react';
 import FileDropDownMenu from './components/DropDownMenu/FileDropDownMenu';
@@ -67,6 +68,16 @@ const fileTypeMeta = {
     icon: InsertDriveFileOutlinedIcon,
     label: 'Other',
     tone: 'bg-slate-100 text-slate-700',
+  },
+  starred: {
+    icon: StarBorderIcon,
+    label: 'Starred',
+    tone: 'bg-yellow-50 text-yellow-700',
+  },
+  trash: {
+    icon: RestoreFromTrashIcon,
+    label: 'Trash',
+    tone: 'bg-gray-50 text-gray-700',
   },
 } satisfies Record<
   FileKind,
@@ -130,6 +141,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);
+  const [showAllStarredFiles, setShowAllStarredFiles] = useState(false);
   const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
   const [deletingFileKey, setDeletingFileKey] = useState<string | null>(null);
   const [totalBytes, setTotalBytes] = useState(0);
@@ -187,6 +199,18 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredFiles = useMemo(() => {
     const matchingFiles = files.filter((file) => {
+      if (activeKind !== 'trash' && activeKind !== 'starred') {
+        if (file.trash === true) return false;
+      }
+
+      if (activeKind === 'starred') {
+        return file.starred === true;
+      }
+
+      if (activeKind === 'trash') {
+        return file.trash === true;
+      }
+
       if (activeKind !== 'all' && file.type !== activeKind) {
         return false;
       }
@@ -235,7 +259,15 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       counts[file.type] += 1;
       return counts;
     },
-    { audio: 0, document: 0, image: 0, other: 0, video: 0 }
+    {
+      audio: 0,
+      document: 0,
+      image: 0,
+      other: 0,
+      video: 0,
+      starred: 0,
+      trash: 0,
+    }
   );
 
   const folderSummaries = (Object.keys(fileTypeMeta) as FileKind[]).map(
@@ -294,15 +326,13 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     }
   };
 
-  const handleFileProtection = async (file: fileFormat) => {
+  const handleFileStarred = async (file: fileFormat) => {
     try {
       await toast.promise(
-        toggleFileProtection({ key: file.key, uid: user.accountId }),
+        toggleFileStarred({ key: file.key, uid: user.accountId }),
         {
-          loading: file.protected
-            ? 'Unprotecting file...'
-            : 'Protecting file...',
-          success: file.protected ? 'File unprotected' : 'File protected',
+          loading: file.starred ? 'Unstarring file...' : 'Starring file...',
+          success: file.starred ? 'File Unstarred' : 'File Starred',
           error: 'Unable to update file protection',
         }
       );
@@ -325,7 +355,9 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
         deleteUploadedFile({ key: file.key, uid: user.accountId }),
         {
           loading: `Deleting ${file.name}...`,
-          success: `${file.name} deleted successfully`,
+          success: file.trash
+            ? `${file.name} deleted successfully`
+            : `${file.name} put to trash successfully`,
           error: `Failed to delete ${file.name}`,
         }
       );
@@ -378,8 +410,8 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
             </span>
           </span>
         </a>
-        {file.protected && (
-          <ShieldOutlinedIcon className="text-muted" fontSize="small" />
+        {file.starred && (
+          <StarBorderIcon className="text-muted" fontSize="small" />
         )}
         <div className="relative shrink-0">
           <button
@@ -401,7 +433,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               onClose={() => setOpenFileMenuKey(null)}
               onDelete={() => void handleDeleteFile(file)}
               onShare={(method: string) => void handleShareFile(file, method)}
-              onToggleProtection={() => void handleFileProtection(file)}
+              onToggleProtection={() => void handleFileStarred(file)}
               index={index}
             />
           )}
@@ -431,7 +463,11 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
             </span>
           </a>
 
-          <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          <DashboardTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            changeActiveKind={setActiveKind}
+          />
 
           <div className="mt-8 rounded-md border border-app bg-[var(--surface-soft)] p-4">
             <div className="flex items-center justify-between">
@@ -504,7 +540,11 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 </span>
               </a>
 
-              <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
+              <DashboardTabs
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                changeActiveKind={setActiveKind}
+              />
 
               <div className="rounded-md border border-app bg-[var(--surface-soft)] p-4">
                 <div className="flex items-center justify-between">
@@ -664,31 +704,33 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                       | FileKind
                       | 'all'
                     )[]
-                  ).map((type) => {
-                    const isActive = activeKind === type;
-                    const label =
-                      type === 'all'
-                        ? 'All'
-                        : fileTypeMeta[type as FileKind].label;
+                  )
+                    .slice(0, 6)
+                    .map((type) => {
+                      const isActive = activeKind === type;
+                      const label =
+                        type === 'all'
+                          ? 'All'
+                          : fileTypeMeta[type as FileKind].label;
 
-                    return (
-                      <button
-                        className={`h-9 shrink-0 rounded-md border px-3 text-sm font-semibold transition ${
-                          isActive
-                            ? 'border-transparent bg-accent text-white'
-                            : 'border-app surface text-muted hover:bg-black/5 hover:text-app'
-                        }`}
-                        key={type}
-                        onClick={() => {
-                          setActiveKind(type);
-                          setShowAllFiles(false);
-                        }}
-                        type="button"
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          className={`h-9 shrink-0 rounded-md border px-3 text-sm font-semibold transition ${
+                            isActive
+                              ? 'border-transparent bg-accent text-white'
+                              : 'border-app surface text-muted hover:bg-black/5 hover:text-app'
+                          }`}
+                          key={type}
+                          onClick={() => {
+                            setActiveKind(type);
+                            setShowAllFiles(false);
+                          }}
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
                 </div>
 
                 {filteredFiles.length > 0 ? (
@@ -841,7 +883,78 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
               </section>
             )}
 
-            {activeTab === 'security' && (
+            {activeTab === 'starred' && (
+              <section className="min-w-0 rounded-lg border border-app surface shadow-drop-1">
+                {filteredFiles.length > 0 ? (
+                  <>
+                    <div className="min-w-0 divide-y divide-[var(--border)]">
+                      {visibleFiles.map((file, index) =>
+                        renderFileRow(file, index)
+                      )}
+                    </div>
+                    {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
+                      <div className="border-t border-app px-5 py-4">
+                        <button
+                          className="flex h-10 w-full items-center justify-center rounded-md border border-app surface px-4 text-sm font-semibold text-accent transition hover:bg-black/5"
+                          onClick={() => setShowAllFiles((current) => !current)}
+                          type="button"
+                        >
+                          {showAllFiles
+                            ? 'Show fewer'
+                            : `More (${hiddenFileCount})`}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="px-5 py-12 text-center">
+                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
+                      <CloudDoneOutlinedIcon fontSize="medium" />
+                    </span>
+                    <h3 className="mt-4 text-base font-semibold text-app">
+                      No Starred files
+                    </h3>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === 'trash' && (
+              <section className="min-w-0 rounded-lg border border-app surface shadow-drop-1">
+                {filteredFiles.length > 0 ? (
+                  <>
+                    <div className="min-w-0 divide-y divide-[var(--border)]">
+                      {visibleFiles.map((file, index) =>
+                        renderFileRow(file, index)
+                      )}
+                    </div>
+                    {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
+                      <div className="border-t border-app px-5 py-4">
+                        <button
+                          className="flex h-10 w-full items-center justify-center rounded-md border border-app surface px-4 text-sm font-semibold text-accent transition hover:bg-black/5"
+                          onClick={() => setShowAllFiles((current) => !current)}
+                          type="button"
+                        >
+                          {showAllFiles
+                            ? 'Show fewer'
+                            : `More (${hiddenFileCount})`}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="px-5 py-12 text-center">
+                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-md bg-[var(--surface-soft)] text-accent">
+                      <CloudDoneOutlinedIcon fontSize="medium" />
+                    </span>
+                    <h3 className="mt-4 text-base font-semibold text-app">
+                      No Files in Trash
+                    </h3>
+                  </div>
+                )}
+              </section>
+            )}
+            {/* {activeTab === 'security' && (
               <section className="min-w-0 rounded-lg border border-app surface p-5 shadow-drop-1">
                 <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
                   <ShieldOutlinedIcon fontSize="small" />
@@ -872,7 +985,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                   ))}
                 </div>
               </section>
-            )}
+            )} */}
 
             <aside className="space-y-6">
               <section className="rounded-lg border border-app surface p-5 shadow-drop-1">
@@ -911,7 +1024,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-app surface p-5 shadow-drop-1">
+              {/* <section className="rounded-lg border border-app surface p-5 shadow-drop-1">
                 <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
                   <ShieldOutlinedIcon fontSize="small" />
                 </div>
@@ -922,7 +1035,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
                   This route verifies the signed session cookie on the server
                   before any workspace data is shown.
                 </p>
-              </section>
+              </section> */}
             </aside>
           </div>
         </section>

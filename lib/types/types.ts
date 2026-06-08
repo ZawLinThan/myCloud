@@ -1,4 +1,11 @@
-export type FileKind = 'document' | 'image' | 'video' | 'audio' | 'other';
+export type FileKind =
+  | 'document'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'other'
+  | 'starred'
+  | 'trash';
 
 export interface fileFormat {
   key: string; // key
@@ -9,7 +16,8 @@ export interface fileFormat {
   extension?: string;
   url: string;
   uploadedAt: string | null;
-  protected: boolean;
+  starred: boolean;
+  trash: boolean;
 }
 
 export interface CurrentUser {
