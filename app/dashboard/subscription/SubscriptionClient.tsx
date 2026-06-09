@@ -1,12 +1,9 @@
 'use client';
 
-import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
-import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -38,7 +35,6 @@ export default function SubscriptionClient({
   checkoutStatus?: string;
   user: CurrentUser;
 }) {
-  const router = useRouter();
   const [loadingPlanId, setLoadingPlanId] = useState<StoragePlanId | null>(
     null
   );

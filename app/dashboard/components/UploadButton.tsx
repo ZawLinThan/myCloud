@@ -9,7 +9,6 @@ import {
   getPresignedUploadUrl,
   saveFileMetadata,
 } from '@/lib/actions/file.actions';
-import { refresh } from 'next/cache';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -97,7 +96,13 @@ export default function UploadButton({
           })(),
           {
             loading: `Uploading ${file.name}...`,
-            success: `${file.name} uploaded successfully`,
+            success: (
+              <span>
+                {file.name} uploaded successfully.
+                <br />
+                Refresh if not updated.
+              </span>
+            ),
             error: (error) =>
               error instanceof Error
                 ? error.message

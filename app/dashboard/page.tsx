@@ -4,6 +4,7 @@ import DashboardClientPage from './DashboardClient';
 
 const DashboardPage = async () => {
   const user = await getCurrentUser();
+  console.log(user);
   if (!user) {
     redirect('/sign-in');
   }

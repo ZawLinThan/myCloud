@@ -23,7 +23,7 @@ import {
   restoreFile,
   toggleFileStarred,
 } from '@/lib/actions/file.actions';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import FileDropDownMenu from './components/DropDownMenu/FileDropDownMenu';
 import FilterDropDownMenu from './components/DropDownMenu/FilterDropDownMenu';
 import DashboardRight from './components/DashboardRight';
@@ -55,80 +55,46 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
-  const [deletingFileKey, setDeletingFileKey] = useState<string | null>(null);
-  const [totalBytes, setTotalBytes] = useState(0);
-  const [usage, setUsage] = useState(0);
-  const [usedPercent, setUsePercent] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const fetchFiles = async () => {
+  const totalBytes = useMemo(() => {
+    if (activeKind === 'starred') {
+      return files
+        .filter((f) => f.starred)
+        .reduce((sum, f) => sum + (f.size ?? 0), 0);
+    }
+    if (activeKind === 'trash') {
+      return files
+        .filter((f) => f.trash)
+        .reduce((sum, f) => sum + (f.size ?? 0), 0);
+    }
+    return files
+      .filter((f) => !f.trash)
+      .reduce((sum, f) => sum + (f.size ?? 0), 0);
+  }, [files, activeKind]);
+
+  const usage = useMemo(
+    () => files.reduce((sum, f) => sum + (f.size ?? 0), 0),
+    [files]
+  );
+
+  const usedPercent = useMemo(
+    () => Math.min(Math.round((usage / storageLimitBytes) * 100), 100),
+    [usage, storageLimitBytes]
+  );
+
+  const fetchFiles = useCallback(async () => {
     const result = await getFiles(user.accountId);
     if (!result.success) return;
-
-    const fetchedFiles = Array.isArray(result.files) ? result.files : [];
-
-    let total = 0;
-    if (activeKind === 'starred') {
-      total = fetchedFiles
-        .filter((file) => file.starred === true)
-        .reduce((sum, file) => sum + (file.size ?? 0), 0);
-    } else if (activeKind === 'trash') {
-      total = fetchedFiles
-        .filter((file) => file.trash === true)
-        .reduce((sum, file) => sum + (file.size ?? 0), 0);
-    } else {
-      total = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
-    }
-
-    const usage = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
-    const percent = Math.min(
-      Math.round((usage / storageLimitBytes) * 100),
-      100
-    );
-
-    setFiles(fetchedFiles);
-    setTotalBytes(total);
-    setUsage(usage);
-    setUsePercent(percent);
-  };
+    setFiles(Array.isArray(result.files) ? result.files : []);
+  }, [user.accountId]);
 
   useEffect(() => {
-    const fetchFiles = async () => {
-      const result = await getFiles(user.accountId);
-      if (!result.success) return;
-
-      const fetchedFiles = Array.isArray(result.files) ? result.files : [];
-      let total = 0;
-      if (activeKind === 'starred') {
-        const filteredFiles = fetchedFiles.filter(
-          (file: fileFormat) => file.starred === true
-        );
-        total = filteredFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
-      } else if (activeKind === 'trash') {
-        const filteredFiles = fetchedFiles.filter(
-          (file: fileFormat) => file.trash === true
-        );
-        total = filteredFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
-      } else {
-        total = fetchedFiles.reduce((sum, file) => sum + (file.size ?? 0), 0);
-      }
-      const usage = fetchedFiles.reduce(
-        (sum, file) => sum + (file.size ?? 0),
-        0
-      );
-      const percent = Math.min(
-        Math.round((usage / storageLimitBytes) * 100),
-        100
-      );
-
-      setFiles(fetchedFiles);
-      setTotalBytes(total);
-      setUsage(usage);
-      setUsePercent(percent);
+    const load = async () => {
+      await fetchFiles();
     };
-
-    void fetchFiles();
-  }, [storageLimitBytes, user.accountId, activeKind]);
+    void load();
+  }, [fetchFiles]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
@@ -295,8 +261,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       return;
     }
 
-    setDeletingFileKey(file.key);
-
     try {
       await toast.promise(
         deleteUploadedFile({
@@ -317,7 +281,6 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       );
       await fetchFiles();
     } finally {
-      setDeletingFileKey(null);
       setOpenFileMenuKey(null);
     }
   };

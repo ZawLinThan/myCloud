@@ -7,7 +7,7 @@ const ErrorMessage = ({ message }: ErrorMessageProps) => {
     return null;
   }
 
-  return <p className="mt-2 text-sm text-red-500">{message}</p>;
+  return <p className="mt-2 text-sm text-red-500 text-center">{message}</p>;
 };
 
 export default ErrorMessage;

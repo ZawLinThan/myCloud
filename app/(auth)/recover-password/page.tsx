@@ -9,6 +9,7 @@ import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import ErrorMessage from '../../../components/ErrorMessage';
 import SuccessMessage from '@/components/SuccessMessage';
 import { auth } from '@/lib/firebase/firebase';
+import { fetchSignInMethodsForEmail } from 'firebase/auth';
 
 export default function RecoverPasswordPage() {
   const [errorMessage, setErrorMessage] = useState('');
@@ -29,7 +30,7 @@ export default function RecoverPasswordPage() {
       setIsSubmitting(false);
     }
   };
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
@@ -47,6 +48,13 @@ export default function RecoverPasswordPage() {
     }
 
     setIsSubmitting(true);
+
+    const methods = await fetchSignInMethodsForEmail(auth, email);
+    if (!methods.length) {
+      setErrorMessage('User not found.');
+      setIsSubmitting(false);
+      return;
+    }
 
     sendRecoveryEmail({ email });
   };

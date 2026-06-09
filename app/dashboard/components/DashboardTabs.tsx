@@ -40,7 +40,6 @@ export default function DashboardTabs({
   changeActiveKind: (kind: 'all' | FileKind) => void;
 }) {
   const handleOnClick = (id: DashboardTabId) => {
-    console.log(id);
     onTabChange(id);
     if (id === 'trash' || id === 'starred') {
       changeActiveKind(id);

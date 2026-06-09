@@ -2,10 +2,8 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { getStorageLimitBytes } from '@/lib/billing/storage-plans';
-import { firebaseAdminAuth, firebaseAdminDb } from '@/lib/firebase/admin';
+import { firebaseAdminAuth } from '@/lib/firebase/admin';
 import { CurrentUser } from '../types/types';
-import { serializeFiles } from './fileSerialization';
-import { decode } from 'punycode';
 
 export const FIREBASE_SESSION_COOKIE_NAME = 'firebase-id-token';
 export const LEGACY_SESSION_COOKIE_NAME = 'session-token';
