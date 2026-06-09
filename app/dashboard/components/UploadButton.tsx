@@ -9,6 +9,7 @@ import {
   getPresignedUploadUrl,
   saveFileMetadata,
 } from '@/lib/actions/file.actions';
+import { refresh } from 'next/cache';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -29,7 +30,7 @@ export default function UploadButton({
   limit,
 }: {
   uid: string;
-  onUploadComplete?: () => void;
+  onUploadComplete: () => void;
   total: number;
   limit: number;
 }) {
@@ -49,9 +50,8 @@ export default function UploadButton({
       );
       return;
     }
-
+    onUploadComplete();
     setUploading(true);
-
     try {
       for (const file of Array.from(files)) {
         await toast.promise(
@@ -76,7 +76,6 @@ export default function UploadButton({
               body: file,
               headers: { 'Content-Type': file.type },
             });
-
             if (!uploadRes.ok) {
               throw new Error(`Upload to storage failed for ${file.name}`);
             }
@@ -106,7 +105,8 @@ export default function UploadButton({
           }
         );
       }
-
+      onUploadComplete?.();
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       onUploadComplete?.();
       event.target.value = '';
     } catch (error) {
