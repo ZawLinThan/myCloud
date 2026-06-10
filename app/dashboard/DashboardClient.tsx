@@ -36,6 +36,7 @@ import {
   getFileNameSizeClass,
 } from './utils/dashboard.util';
 import DashboardActiveTab from './components/DashboardActiveTab';
+import DashboardSkeleton from '@/components/Skeletons/DashboardSkeleton';
 
 type SortMode = 'recent' | 'name' | 'size';
 
@@ -56,7 +57,8 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isFilesLoading, setIsFilesLoading] = useState(false);
 
   const totalBytes = useMemo(() => {
     if (activeKind === 'starred') {
@@ -84,17 +86,28 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
     [usage, storageLimitBytes]
   );
 
-  const fetchFiles = useCallback(async () => {
-    setIsLoading(true);
-    const result = await getFiles(user.accountId);
-    if (!result.success) return;
-    setFiles(Array.isArray(result.files) ? result.files : []);
-    setIsLoading(false);
-  }, [user.accountId]);
+  const fetchFiles = useCallback(
+    async (initial = false) => {
+      if (initial) {
+        setIsInitialLoading(true);
+      } else {
+        setIsFilesLoading(true);
+      }
+      try {
+        const result = await getFiles(user.accountId);
+        if (!result.success) return;
+        setFiles(Array.isArray(result.files) ? result.files : []);
+      } finally {
+        setIsInitialLoading(false);
+        setIsFilesLoading(false);
+      }
+    },
+    [user.accountId]
+  );
 
   useEffect(() => {
     const load = async () => {
-      await fetchFiles();
+      await fetchFiles(true);
     };
     void load();
   }, [fetchFiles]);
@@ -500,7 +513,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
         <DashboardActiveTab
           activeTab={activeTab}
           isSearching={isSearching}
-          isLoading={isLoading}
+          isLoading={isFilesLoading}
           isFilteringKind={isFilteringKind}
           showAllFiles={showAllFiles}
           visibleFiles={visibleFiles}
@@ -517,6 +530,10 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
       );
     }
   };
+
+  if (isInitialLoading) {
+    return <DashboardSkeleton />;
+  }
   return (
     <main className="min-h-screen overflow-x-hidden bg-[var(--background)] px-4 pb-10 pt-24 sm:px-6 lg:px-8">
       <section className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[248px_minmax(0,1fr)]">
