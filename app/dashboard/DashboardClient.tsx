@@ -56,6 +56,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [openFileMenuKey, setOpenFileMenuKey] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const totalBytes = useMemo(() => {
     if (activeKind === 'starred') {
@@ -84,9 +85,11 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   );
 
   const fetchFiles = useCallback(async () => {
+    setIsLoading(true);
     const result = await getFiles(user.accountId);
     if (!result.success) return;
     setFiles(Array.isArray(result.files) ? result.files : []);
+    setIsLoading(false);
   }, [user.accountId]);
 
   useEffect(() => {
@@ -497,6 +500,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
         <DashboardActiveTab
           activeTab={activeTab}
           isSearching={isSearching}
+          isLoading={isLoading}
           isFilteringKind={isFilteringKind}
           showAllFiles={showAllFiles}
           visibleFiles={visibleFiles}
@@ -516,7 +520,7 @@ export default function DashboardClientPage({ user }: { user: CurrentUser }) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[var(--background)] px-4 pb-10 pt-24 sm:px-6 lg:px-8">
       <section className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="hidden min-h-[calc(100vh-7rem)] rounded-lg border border-app surface p-4 shadow-drop-1 lg:block">
+        <aside className="hidden rounded-lg border border-app surface p-4 shadow-drop-1 lg:block">
           <a
             className="flex items-center gap-3 rounded-md bg-[var(--surface-soft)] p-3"
             href="/dashboard"

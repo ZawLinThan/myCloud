@@ -6,15 +6,18 @@ import {
   getContent,
   formatBytes,
 } from '../utils/dashboard.util';
+import { FileRowSkeleton } from '@/components/Skeletons/FileRowSkeleton';
 
 import CloudDoneOutlinedIcon from '@mui/icons-material/CloudDoneOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import { JSX } from 'react';
 import Link from 'next/link';
 
 interface DashboardActiveTabProp {
   activeTab: DashboardTabId;
   isSearching: boolean;
+  isLoading: boolean;
   isFilteringKind: boolean;
   showAllFiles: boolean;
   visibleFiles: fileFormat[];
@@ -36,6 +39,7 @@ interface DashboardActiveTabProp {
 const DashboardActiveTab = ({
   activeTab,
   isSearching,
+  isLoading,
   isFilteringKind,
   showAllFiles,
   visibleFiles,
@@ -51,9 +55,13 @@ const DashboardActiveTab = ({
 }: DashboardActiveTabProp) => {
   const content = getContent(activeTab);
   const renderRightButton = () => {
-    if (activeTab === 'folders') {
-      return <FolderOutlinedIcon className="text-accent" fontSize="small" />;
-    } else if (activeTab === 'storage') {
+    // if (activeTab === 'files') {
+    //   return (
+    //   <button className='h-9 shrink-0 rounded-md px-3 text-sm font-semibold transition border-app surface text-muted hover:bg-black/5 hover:text-app'>
+    //     <CheckBoxOutlineBlankIcon className="rounded-md text-accent" fontSize="small" />
+    //   </button>)
+    // } else
+    if (activeTab === 'storage') {
       return (
         <Link
           className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white shadow-drop-2"
@@ -85,7 +93,11 @@ const DashboardActiveTab = ({
         return (
           <>
             <div className="min-w-0 divide-y divide-[var(--border)]">
-              {visibleFiles.map((file, index) => renderFileRow(file, index))}
+              {isLoading
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <FileRowSkeleton key={i} />
+                  ))
+                : visibleFiles.map((file, index) => renderFileRow(file, index))}
             </div>
             {filteredFiles.length > INITIAL_VISIBLE_FILE_COUNT && (
               <div className="border-t border-app px-5 py-4">
