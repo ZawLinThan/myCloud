@@ -27,31 +27,6 @@ const NavBar = () => {
             </span>
           </Link>
 
-          {isAuthPage && (
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link
-                href="/sign-in"
-                className="hidden rounded-md px-3 py-2 text-sm font-semibold text-muted transition hover:bg-black/5 hover:text-app md:block"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/sign-up"
-                className="hidden rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white shadow-drop-2 transition hover:-translate-y-0.5 md:block"
-              >
-                Sign up
-              </Link>
-              <button
-                aria-expanded={isMenuOpen}
-                aria-label="Open menu"
-                className="grid h-10 w-10 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-app md:hidden"
-                onClick={() => setIsMenuOpen((current) => !current)}
-                type="button"
-              >
-                <MenuRoundedIcon fontSize="small" />
-              </button>
-            </div>
-          )}
           {isDashboardPage ? (
             <div className="flex items-center gap-2">
               <Link
@@ -62,13 +37,14 @@ const NavBar = () => {
               </Link>
             </div>
           ) : isAuthPage ? (
-            <button
-              aria-label="Language"
-              className="grid h-10 w-10 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-app"
-            >
-              <LanguageIcon fontSize="small" />
-            </button>
+            <p></p>
           ) : (
+            // <button
+            //   aria-label="Language"
+            //   className="grid h-10 w-10 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-app"
+            // >
+            //   <LanguageIcon fontSize="small" />
+            // </button>
             <div className="flex items-center gap-2 sm:gap-4">
               <Link
                 href="/sign-in"

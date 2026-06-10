@@ -99,7 +99,7 @@ export default function UploadButton({
             success: (
               <span>
                 {file.name} uploaded successfully.
-                <br />
+                <br /> <br />
                 Refresh if not updated.
               </span>
             ),

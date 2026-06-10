@@ -56,29 +56,6 @@ const getFileTypeFromMime = (mimeType: string): string => {
       'text/plain',
       'text/rtf',
     ],
-    spreadsheet: [
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'text/csv',
-    ],
-    presentation: [
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
-    ],
-    archive: [
-      'application/zip',
-      'application/x-rar-compressed',
-      'application/x-tar',
-      'application/gzip',
-      'application/x-7z-compressed',
-    ],
-    code: [
-      'text/javascript',
-      'text/typescript',
-      'text/html',
-      'text/css',
-      'application/json',
-    ],
   };
 
   for (const [type, mimes] of Object.entries(types)) {
