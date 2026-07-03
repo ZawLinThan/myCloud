@@ -1,199 +1,200 @@
 # myCloud
 
-A self-hosted cloud storage workspace — sign in, upload, organize, and share files from a single dashboard.
+A self-hosted cloud storage application for signing in, uploading, organizing, sharing, and expanding personal file storage from a responsive dashboard.
 
 ![myCloud landing page](./public/screenshots/landing-desktop.png)
 
----
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Screenshots](#screenshots)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
+- [License](#license)
+
+## Overview
+
+myCloud is a full-stack Next.js application that combines Firebase Authentication, Firestore metadata, Cloudflare R2 object storage, Resend email delivery, and Stripe Checkout to provide a private cloud storage experience.
+
+Users can authenticate with email/password or Google, upload files directly to R2 through presigned URLs, manage files from a dashboard, share files by email, and purchase additional storage capacity.
 
 ## Features
 
-- **Email + password auth** with email-link verification and a recover-password flow
-- **Sign in with Google**
-- **Folders, recent files, and a unified "My files" view** with type filters (Documents, Images, Videos, Audio, Other)
-- **Search** across file names, extensions, and types, plus sort by recent / name / size
-- **Storage meter** with a 1 GB per-account cap and live usage stats
-- **Per-file actions**: download, share via email (Resend), toggle protection, delete
-- **Responsive UI** — the dashboard sidebar collapses into a left-side drawer on mobile, preserving full feature parity
-- **Light / dark theme** with system preference detection
+- Email/password authentication with Firebase email verification
+- Google sign-in through Firebase Authentication
+- Protected dashboard with server-verified Firebase sessions
+- Direct-to-R2 uploads using presigned S3-compatible URLs
+- File filtering by type, search, sorting, starring, trash, restore, and permanent delete
+- Signed file preview/download URLs
+- Storage usage tracking with a 1 GB base quota
+- Stripe Checkout for additional storage plans
+- Responsive dashboard with desktop sidebar and mobile drawer
+- Light/dark theme support
 
----
+## Tech Stack
+
+| Layer              | Technology                                  |
+| ------------------ | ------------------------------------------- |
+| Framework          | Next.js 16 App Router                       |
+| Runtime UI         | React 19, TypeScript                        |
+| Styling            | Tailwind CSS v4, MUI v9, Emotion            |
+| Authentication     | Firebase Authentication, Firebase Admin SDK |
+| Database           | Cloud Firestore                             |
+| Object Storage     | Cloudflare R2 via AWS S3 SDK                |
+| Payments           | Stripe Checkout and webhooks                |
+| Forms & Validation | React Hook Form, Zod                        |
+| Tooling            | ESLint, Prettier, Husky, lint-staged        |
 
 ## Screenshots
 
-### Dashboard (desktop)
+### Landing Page
+
+![Landing page on desktop](./public/screenshots/landing-desktop.png)
+
+### Dashboard
 
 ![Dashboard on desktop](./public/screenshots/dashboard-desktop.png)
 
-The sidebar on the left shows the user, primary navigation tabs, live storage usage, and the upload button. The main area surfaces total files, storage used, recent uploads with type filters, and a file-mix breakdown.
-
-### Dashboard (mobile)
+### Mobile Dashboard
 
 ![Dashboard on mobile](./public/screenshots/dashboard-mobile.png)
 
-On narrow viewports, the sidebar moves behind a hamburger button. Tapping it opens a left-side drawer that mirrors the desktop sidebar (user info, tabs, storage, upload).
-
-### Sign in
+### Sign In
 
 ![Sign-in page](./public/screenshots/sign-in-desktop.png)
 
-A split layout with the product pitch on the left and the email / password form (plus Google sign-in) on the right.
-
-### Sign up
+### Sign Up
 
 ![Sign-up page](./public/screenshots/sign-up-desktop.png)
 
-Email and password registration, followed by an email verification step.
-
-### Landing
-
-![Landing page on mobile](./public/screenshots/landing-mobile.png)
-
-A mobile rendering of the public landing page that introduces the product.
-
----
-
-## Tech stack
-
-| Layer        | Choice                                                         |
-| ------------ | -------------------------------------------------------------- |
-| Framework    | **Next.js 16** (App Router, Turbopack, Server Actions)         |
-| Language     | TypeScript + React 19                                          |
-| Styling      | Tailwind CSS v4 + MUI v9 (Emotion)                             |
-| Auth         | Firebase Authentication (client SDK + Admin SDK for sessions)  |
-| Database     | Firebase Firestore                                             |
-| File storage | Cloudflare R2 over `@aws-sdk/client-s3` with presigned uploads |
-| Email        | Resend (verification + share notifications) (need domain)      |
-| Validation   | Zod + react-hook-form                                          |
-| Toasts       | sonner                                                         |
-| Tooling      | ESLint, Prettier, Husky, lint-staged                           |
-
----
-
-## Project structure
-
-```
-.
-├── app/
-│   ├── (auth)/               # Sign-in, sign-up, recover-password (shared layout)
-│   │   ├── components/       # AuthForm, OTPForm (legacy), OAuth buttons
-│   │   ├── sign-in/
-│   │   ├── sign-up/
-│   │   └── recover-password/
-│   ├── dashboard/            # Authenticated workspace
-│   │   ├── components/       # DashboardTabs, UploadButton, SignOutButton, dropdowns
-│   │   ├── folders/
-│   │   ├── page.tsx          # Server entry, redirects to /sign-in when not authed
-│   │   └── DashboardClient.tsx
-│   ├── layout.tsx            # Root layout (NavBar, Toaster, ThemeToggle)
-│   ├── globals.css
-│   └── page.tsx              # Public landing page
-├── components/               # Shared: NavBar, ErrorMessage, SuccessMessage, ThemeToggle
-├── lib/
-│   ├── actions/              # Server Actions: file.actions.ts, user.actions.ts
-│   ├── firebase/             # Client + Admin Firebase setup
-│   ├── r2/                   # S3 client + presigned upload helpers
-│   ├── types/                # Shared TS types (CurrentUser, fileFormat, FileKind)
-│   └── utils/                # Session, OTP (legacy), helpers
-├── public/                   # Static assets + screenshots used in this README
-├── next.config.js
-├── tailwind / postcss configs
-└── package.json
-```
-
----
-
-## Getting started
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 20+ (Node 22 recommended)
-- A Firebase project (Authentication enabled, with Email/Password and Google providers)
-- A Cloudflare R2 bucket
-- A Resend account (for OTP and share emails)
+- Node.js 20 or newer
+- npm
+- Firebase project with Authentication and Firestore enabled
+- Cloudflare R2 bucket and S3-compatible credentials
+- Resend API key
+- Stripe account and webhook signing secret
 
-### Install
+### Installation
 
 ```bash
 npm install
 ```
 
-### Configure environment
+### Configuration
 
-Create a `.env.local` in the project root with the variables listed in [Environment variables](#environment-variables), then:
+Create a `.env.local` file in the project root and add the variables listed in [Environment Variables](#environment-variables).
+
+### Development
 
 ```bash
 npm run dev
 ```
 
-The app runs at `http://localhost:3000` via Turbopack.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Build & start (production)
+### Production
 
 ```bash
 npm run build
 npm run start
 ```
 
-### Other scripts
+## Environment Variables
 
-```bash
-npm run lint     # ESLint
-npm run format   # Prettier
+All environment variables should be stored in `.env.local` for local development.
+
+| Variable                                   | Required    | Description                                      |
+| ------------------------------------------ | ----------- | ------------------------------------------------ |
+| `NEXT_PUBLIC_FIREBASE_API`                 | Yes         | Firebase web API key                             |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | Yes         | Firebase auth domain                             |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | Yes         | Firebase project ID                              |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`      | Yes         | Firebase storage bucket                          |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Yes         | Firebase messaging sender ID                     |
+| `NEXT_PUBLIC_FIREBASE_APP_ID`              | Yes         | Firebase app ID                                  |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`      | Optional    | Firebase analytics measurement ID                |
+| `FIREBASE_PROJECT_ID`                      | Yes         | Firebase Admin project ID                        |
+| `FIREBASE_CLIENT_EMAIL`                    | Yes         | Firebase Admin service account email             |
+| `FIREBASE_PRIVATE_KEY`                     | Yes         | Firebase Admin private key                       |
+| `R2_ENDPOINT`                              | Yes         | Cloudflare R2 S3-compatible endpoint             |
+| `R2_ACCESS_KEY_ID`                         | Yes         | Cloudflare R2 access key ID                      |
+| `R2_SECRET_ACCESS_KEY`                     | Yes         | Cloudflare R2 secret access key                  |
+| `R2_BUCKET_NAME`                           | Yes         | Cloudflare R2 bucket name                        |
+| `R2_PUBLIC_URL`                            | Yes         | Public URL prefix for stored objects             |
+| `RESEND_API`                               | Yes         | Resend API key                                   |
+| `STRIPE_SECRET_KEY`                        | Yes         | Stripe secret key                                |
+| `STRIPE_WEBHOOK_SECRET`                    | Yes         | Stripe webhook signing secret                    |
+| `NEXT_PUBLIC_APP_URL`                      | Recommended | Public application URL for Stripe redirect links |
+
+When storing `FIREBASE_PRIVATE_KEY`, preserve newlines as escaped `\n` characters if your environment provider requires single-line values.
+
+## Architecture
+
+### Authentication and Sessions
+
+Firebase Authentication handles client sign-in and registration. After sign-in, the app sends the Firebase ID token to a Server Action, verifies it with the Firebase Admin SDK, upserts the user document in Firestore, and stores the token in an HTTP-only session cookie.
+
+Server Components and Server Actions read that cookie through `lib/utils/session.ts` to protect authenticated pages and mutations.
+
+### File Uploads
+
+1. The client requests a presigned upload URL from a Server Action.
+2. The browser uploads the file directly to Cloudflare R2.
+3. The client calls another Server Action to save file metadata in Firestore.
+4. Dashboard data refreshes with signed read URLs and updated storage totals.
+
+This keeps large file bytes out of the Next.js server path and lets R2 handle object storage directly.
+
+### Billing
+
+Storage plans are defined in `lib/billing/storage-plans.ts`. Stripe Checkout creates payment sessions, and the webhook route updates the user's purchased storage after successful checkout completion.
+
+## Project Structure
+
+```text
+.
+├── app/
+│   ├── (auth)/                  # Sign-in, sign-up, and password recovery
+│   ├── api/stripe/              # Stripe Checkout and webhook routes
+│   ├── dashboard/               # Authenticated storage dashboard
+│   ├── globals.css              # Global styles
+│   ├── layout.tsx               # Root layout
+│   └── page.tsx                 # Public landing page
+├── components/                  # Shared UI components
+├── lib/
+│   ├── actions/                 # Server Actions
+│   ├── billing/                 # Storage plans and Stripe helpers
+│   ├── firebase/                # Firebase client and admin setup
+│   ├── r2/                      # Cloudflare R2 client and upload helpers
+│   ├── types/                   # Shared TypeScript types
+│   └── utils/                   # Session, OTP, hashing, and serialization helpers
+├── public/                      # Static assets and screenshots
+├── eslint.config.mjs            # ESLint configuration
+├── next.config.js               # Next.js configuration
+├── postcss.config.mjs           # PostCSS/Tailwind configuration
+├── tsconfig.json                # TypeScript configuration
+└── package.json                 # Scripts and dependencies
 ```
 
----
+## Available Scripts
 
-## Environment variables
-
-All variables live in `.env.local`. Variable names only — supply your own values.
-
-| Variable                                   | Purpose                                          |
-| ------------------------------------------ | ------------------------------------------------ |
-| tokens                                     |
-| `RESEND_API`                               | Resend API key (transactional email)             |
-| `NEXT_PUBLIC_FIREBASE_API`                 | Firebase web config — API key                    |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | Firebase web config — auth domain                |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | Firebase web config — project ID                 |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`      | Firebase web config — storage bucket             |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase web config — messaging sender ID        |
-| `NEXT_PUBLIC_FIREBASE_APP_ID`              | Firebase web config — app ID                     |
-| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`      | Firebase web config — measurement ID (analytics) |
-| `FIREBASE_PROJECT_ID`                      | Server-side Firebase Admin project ID            |
-| `FIREBASE_CLIENT_EMAIL`                    | Firebase Admin service-account email             |
-| `FIREBASE_PRIVATE_KEY`                     | Firebase Admin service-account private key       |
-| `R2_ACCOUNT_ID`                            | Cloudflare R2 account ID                         |
-| `R2_ACCESS_KEY_ID`                         | R2 access key                                    |
-| `R2_SECRET_ACCESS_KEY`                     | R2 secret key                                    |
-| `R2_TOKEN_VALUE`                           | R2 API token (if using scoped tokens)            |
-| `R2_ENDPOINT`                              | R2 S3-compatible endpoint                        |
-| `R2_BUCKET_NAME`                           | Target bucket                                    |
-| `R2_PUBLIC_URL`                            | Public URL prefix for serving uploaded files     |
-| `STRIPE_SECRET_KEY`                        | Stripe secret key for creating Checkout sessions |
-| `STRIPE_WEBHOOK_SECRET`                    | Stripe webhook signing secret                    |
-| `NEXT_PUBLIC_APP_URL`                      | Public app URL for Stripe success/cancel links   |
-
----
-
-## Auth & session model
-
-- **Sign up / sign in** are handled by Firebase Authentication on the client.
-- On a successful client sign-in, the app calls a Server Action that verifies the Firebase ID token server-side with `firebase-admin`, upserts the user record in MongoDB, and issues a **session cookie** (`firebase-id-token`, `httpOnly`, `sameSite=lax`).
-- Server components and Server Actions read the cookie via `lib/utils/session.ts` → `getCurrentUser()`, which re-verifies the token with `firebase-admin` and returns a typed `CurrentUser`. The dashboard route uses this to gate access.
-
----
-
-## File upload pipeline
-
-1. The client calls a Server Action that returns a **presigned PUT URL** from R2.
-2. The browser uploads the file directly to R2 with `fetch` + `Content-Type`.
-3. On success, a second Server Action writes a `File` document to MongoDB with the resulting URL, kind, size, and owner.
-4. The dashboard revalidates file lists and storage totals.
-
-This keeps the Next.js server out of the byte path and lets it scale to large uploads without bumping the 1 MB Server Action body limit.
-
----
+| Command          | Description                        |
+| ---------------- | ---------------------------------- |
+| `npm run dev`    | Start the local development server |
+| `npm run build`  | Create a production build          |
+| `npm run start`  | Start the production server        |
+| `npm run lint`   | Run ESLint                         |
+| `npm run format` | Format files with Prettier         |
+| `npm run all`    | Format, lint, and build            |
 
 ## License
 
-MIT.
+No license file is currently included. Add a `LICENSE` file before publishing or distributing this project.

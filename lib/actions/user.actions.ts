@@ -1,12 +1,14 @@
 'use server';
 
-import { firebaseAdminAuth } from '@/lib/firebase/admin';
+import {
+  firebaseAdminAuth,
+  firebaseAdminDb,
+  hasFirebaseAdminCredentials,
+} from '@/lib/firebase/admin';
 import {
   setFirebaseSessionCookie,
   clearSessionCookies,
 } from '../utils/session';
-import { setDoc, doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase/firebase';
 import { getStorageLimitBytes } from '../billing/storage-plans';
 import { serializeFiles } from '../utils/fileSerialization';
 
@@ -16,6 +18,66 @@ const getVerifiedFirebaseUser = async (idToken: string) => {
   }
 
   return firebaseAdminAuth.verifyIdToken(idToken);
+};
+
+const getUserDocument = async (uid: string) => {
+  if (!hasFirebaseAdminCredentials) {
+    return null;
+  }
+
+  try {
+    return await firebaseAdminDb.collection('users').doc(uid).get();
+  } catch (error) {
+    console.error('Firebase user document read error:', error);
+    return null;
+  }
+};
+
+const syncUserDocument = async ({
+  uid,
+  email,
+  displayName,
+  avatar,
+  documentExists,
+}: {
+  uid: string;
+  email: string;
+  displayName: string;
+  avatar: string | null;
+  documentExists: boolean;
+}) => {
+  if (!hasFirebaseAdminCredentials) {
+    console.warn(
+      'Skipping Firebase user document sync because Admin credentials are not configured.'
+    );
+    return;
+  }
+
+  try {
+    await firebaseAdminDb
+      .collection('users')
+      .doc(uid)
+      .set(
+        {
+          accountId: uid,
+          email,
+          fullName: displayName,
+          avatar,
+          otpHash: null,
+          otpExpiresAt: null,
+          ...(!documentExists
+            ? {
+                files: [],
+                purchasedStorageGb: 0,
+                storageLimitBytes: getStorageLimitBytes(0),
+              }
+            : {}),
+        },
+        { merge: true }
+      );
+  } catch (error) {
+    console.error('Firebase user document sync error:', error);
+  }
 };
 
 export const createOrUpdateFirebaseUser = async ({
@@ -54,51 +116,37 @@ export const createOrUpdateFirebaseUser = async ({
       email.split('@')[0] ||
       'MyCloud user';
 
-    const userDocRef = doc(db, 'users', decodedToken.uid);
-    const userDocSnap = await getDoc(userDocRef);
+    const userDocSnap = await getUserDocument(decodedToken.uid);
 
-    // initialize at sign-up, not sign in
-    if (userDocSnap) {
-      await setDoc(
-        userDocRef,
-        {
-          accountId: decodedToken.uid,
-          email: decodedToken.email,
-          fullName: displayName,
-          avatar: decodedToken.picture ?? null,
-          otpHash: null, // to verify the user for protected files
-          otpExpiresAt: null,
-          ...(!userDocSnap.exists()
-            ? {
-                files: [],
-                purchasedStorageGb: 0,
-                storageLimitBytes: getStorageLimitBytes(0),
-              }
-            : {}),
-        },
-        { merge: true }
-      );
-    }
+    await syncUserDocument({
+      uid: decodedToken.uid,
+      email,
+      displayName,
+      avatar: decodedToken.picture ?? null,
+      documentExists: userDocSnap?.exists ?? false,
+    });
 
     await setFirebaseSessionCookie(idToken);
+
+    const userData = userDocSnap?.exists ? userDocSnap.data() : undefined;
 
     return {
       success: true,
       message: 'Signed in successfully',
       user: {
         accountId: decodedToken.uid,
-        email: decodedToken.email,
+        email,
         fullName: displayName,
         avatar: decodedToken.picture ?? null,
-        files: userDocSnap.exists()
-          ? serializeFiles(userDocSnap.data().files)
-          : [],
-        purchasedStorageGb: userDocSnap.exists()
-          ? (userDocSnap.data().purchasedStorageGb ?? 0)
-          : 0,
-        storageLimitBytes: userDocSnap.exists()
-          ? (userDocSnap.data().storageLimitBytes ?? getStorageLimitBytes(0))
-          : getStorageLimitBytes(0),
+        files: serializeFiles(userData?.files),
+        purchasedStorageGb:
+          typeof userData?.purchasedStorageGb === 'number'
+            ? userData.purchasedStorageGb
+            : 0,
+        storageLimitBytes:
+          typeof userData?.storageLimitBytes === 'number'
+            ? userData.storageLimitBytes
+            : getStorageLimitBytes(0),
       },
     };
   } catch (error) {

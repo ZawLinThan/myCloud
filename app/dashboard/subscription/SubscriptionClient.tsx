@@ -4,7 +4,8 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   formatPrice,
@@ -13,7 +14,7 @@ import {
 } from '@/lib/billing/storage-plans';
 import type { CurrentUser } from '@/lib/types/types';
 
-const formatBytes = (bytes = 0) => {
+const formatBytes = (bytes: number = 0): string => {
   if (!bytes) {
     return '0 B';
   }
@@ -28,16 +29,107 @@ const formatBytes = (bytes = 0) => {
   return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[exponent]}`;
 };
 
+const readJsonResponse = async <T,>(response: Response): Promise<T> => {
+  const text = await response.text();
+
+  if (!text) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return {
+      message: response.ok
+        ? 'Received an invalid server response.'
+        : text.slice(0, 160),
+    } as T;
+  }
+};
+
+const wait = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 export default function SubscriptionClient({
+  checkoutSessionId,
   checkoutStatus,
   user,
 }: {
+  checkoutSessionId?: string;
   checkoutStatus?: string;
   user: CurrentUser;
 }) {
+  const router = useRouter();
+  const didConfirmCheckout = useRef(false);
   const [loadingPlanId, setLoadingPlanId] = useState<StoragePlanId | null>(
     null
   );
+  const [storageLimitBytes, setStorageLimitBytes] = useState(
+    user.storageLimitBytes
+  );
+  const [confirmationStatus, setConfirmationStatus] = useState<
+    'idle' | 'confirming' | 'confirmed' | 'failed'
+  >('idle');
+
+  useEffect(() => {
+    if (
+      checkoutStatus !== 'success' ||
+      !checkoutSessionId ||
+      didConfirmCheckout.current
+    ) {
+      return;
+    }
+
+    didConfirmCheckout.current = true;
+    setConfirmationStatus('confirming');
+
+    const confirmStoragePurchase = async () => {
+      try {
+        let lastMessage = 'Unable to confirm storage purchase.';
+
+        for (let attempt = 1; attempt <= 5; attempt += 1) {
+          const response = await fetch('/api/stripe/confirm-storage-purchase', {
+            body: JSON.stringify({ sessionId: checkoutSessionId }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            method: 'POST',
+          });
+          const data = await readJsonResponse<{
+            message?: string;
+            storageLimitBytes?: number;
+          }>(response);
+
+          if (response.ok && typeof data.storageLimitBytes === 'number') {
+            setStorageLimitBytes(data.storageLimitBytes);
+            setConfirmationStatus('confirmed');
+            toast.success('Storage limit updated.');
+            router.refresh();
+            return;
+          }
+
+          lastMessage = data.message || lastMessage;
+
+          if (response.status !== 409 || attempt === 5) {
+            break;
+          }
+
+          await wait(attempt * 1200);
+        }
+
+        throw new Error(lastMessage);
+      } catch (error) {
+        setConfirmationStatus('failed');
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Unable to confirm storage purchase.'
+        );
+      }
+    };
+
+    void confirmStoragePurchase();
+  }, [checkoutSessionId, checkoutStatus, router]);
 
   const handleCheckout = async (planId: StoragePlanId) => {
     setLoadingPlanId(planId);
@@ -50,10 +142,10 @@ export default function SubscriptionClient({
         },
         method: 'POST',
       });
-      const data = (await response.json()) as {
+      const data = await readJsonResponse<{
         message?: string;
         url?: string;
-      };
+      }>(response);
 
       if (!response.ok || !data.url) {
         throw new Error(data.message || 'Unable to start checkout.');
@@ -88,16 +180,30 @@ export default function SubscriptionClient({
             Extra storage is added to your account after Stripe confirms
             payment. Your current allowance is{' '}
             <span className="font-semibold text-app">
-              {formatBytes(user.storageLimitBytes)}
+              {formatBytes(storageLimitBytes)}
             </span>
             .
           </p>
         </div>
 
-        {checkoutStatus === 'success' && (
+        {checkoutStatus === 'success' && confirmationStatus === 'confirmed' && (
           <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-            Payment received. Stripe is updating your storage; refresh the
-            dashboard in a moment if the new limit is not visible yet.
+            Payment confirmed. Your storage limit has been updated.
+          </div>
+        )}
+
+        {checkoutStatus === 'success' && confirmationStatus !== 'confirmed' && (
+          <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+            {confirmationStatus === 'confirming'
+              ? 'Payment received. Confirming your storage upgrade with Stripe…'
+              : 'Payment received. Stripe is updating your storage; refresh the dashboard in a moment if the new limit is not visible yet.'}
+          </div>
+        )}
+
+        {confirmationStatus === 'failed' && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
+            The payment succeeded, but this browser could not confirm the
+            storage update. The Stripe webhook will still apply it shortly.
           </div>
         )}
 

@@ -5,7 +5,10 @@ import SubscriptionClient from './SubscriptionClient';
 export default async function SubscriptionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string | string[] }>;
+  searchParams: Promise<{
+    checkout?: string | string[];
+    session_id?: string | string[];
+  }>;
 }) {
   const user = await getCurrentUser();
 
@@ -17,6 +20,15 @@ export default async function SubscriptionPage({
   const checkoutStatus = Array.isArray(params.checkout)
     ? params.checkout[0]
     : params.checkout;
+  const checkoutSessionId = Array.isArray(params.session_id)
+    ? params.session_id[0]
+    : params.session_id;
 
-  return <SubscriptionClient checkoutStatus={checkoutStatus} user={user} />;
+  return (
+    <SubscriptionClient
+      checkoutSessionId={checkoutSessionId}
+      checkoutStatus={checkoutStatus}
+      user={user}
+    />
+  );
 }

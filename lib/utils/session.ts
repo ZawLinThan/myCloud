@@ -2,8 +2,13 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { getStorageLimitBytes } from '@/lib/billing/storage-plans';
-import { firebaseAdminAuth } from '@/lib/firebase/admin';
+import {
+  firebaseAdminAuth,
+  firebaseAdminDb,
+  hasExplicitFirebaseAdminCredentials,
+} from '@/lib/firebase/admin';
 import { CurrentUser } from '../types/types';
+import { serializeFiles } from './fileSerialization';
 
 export const FIREBASE_SESSION_COOKIE_NAME = 'firebase-id-token';
 export const LEGACY_SESSION_COOKIE_NAME = 'session-token';
@@ -31,37 +36,53 @@ export const clearSessionCookies = async () => {
 
 export const getCurrentUser = async (): Promise<CurrentUser | null> => {
   const token = (await cookies()).get(FIREBASE_SESSION_COOKIE_NAME)?.value;
-  console.log('Token retrieved');
+
   if (!token) {
-    console.log('No token found in cookies.');
     return null;
   }
-  console.log('Token found, verifying...');
+
   try {
     const decodedToken = await firebaseAdminAuth.verifyIdToken(token);
+    let userData: FirebaseFirestore.DocumentData | undefined;
 
-    // const userSnap = await firebaseAdminDb
-    //   .collection('users')
-    //   .doc(decodedToken.uid)
-    //   .get();
-    // console.log("line 48")
-    // const userData = userSnap.exists ? userSnap.data() : undefined;
-    // const purchasedStorageGb =
-    //   typeof userData?.purchasedStorageGb === 'number'
-    //     ? userData.purchasedStorageGb
-    //     : 0;
-    // console.log("User data retrieved:")
+    if (hasExplicitFirebaseAdminCredentials) {
+      try {
+        const userSnap = await firebaseAdminDb
+          .collection('users')
+          .doc(decodedToken.uid)
+          .get();
+
+        userData = userSnap.exists ? userSnap.data() : undefined;
+      } catch (error) {
+        console.error('Firebase session user lookup error:', error);
+      }
+    }
+
+    const email = decodedToken.email ?? userData?.email;
+    const fullName =
+      userData?.fullName ||
+      decodedToken.name ||
+      email?.split('@')[0] ||
+      'MyCloud user';
+    const purchasedStorageGb =
+      typeof userData?.purchasedStorageGb === 'number'
+        ? userData.purchasedStorageGb
+        : 0;
+
     return {
       accountId: decodedToken.uid,
-      email: decodedToken.email, // ?? userData?.email,
-      fullName: decodedToken.name,
-      //userData?.fullName || decodedToken.name || decodedToken.email || 'User',
-      avatar: decodedToken.picture ?? null, //userData?.avatar ?? decodedToken.picture ?? null,
-      files: decodedToken.files, //userData?.files, //serializeFiles(userData?.files),
-      purchasedStorageGb: decodedToken.purchasedStorageGb, //typeof userData?.purchasedStorageGb === 'number' ? userData.purchasedStorageGb : 0,
-      storageLimitBytes: getStorageLimitBytes(decodedToken.purchasedStorageGb), //typeof userData?.storageLimitBytes === 'number' ? userData.storageLimitBytes : getStorageLimitBytes(purchasedStorageGb),
+      email,
+      fullName,
+      avatar: userData?.avatar ?? decodedToken.picture ?? null,
+      files: serializeFiles(userData?.files),
+      purchasedStorageGb,
+      storageLimitBytes:
+        typeof userData?.storageLimitBytes === 'number'
+          ? userData.storageLimitBytes
+          : getStorageLimitBytes(purchasedStorageGb),
     };
-  } catch {
+  } catch (error) {
+    console.error('Firebase session verification error:', error);
     return null;
   }
 };
