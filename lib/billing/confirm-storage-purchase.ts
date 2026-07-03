@@ -13,6 +13,7 @@ export type StoragePurchaseConfirmation =
     }
   | {
       message: string;
+      purchasedStorageGb?: number; // optional, might need to remove this field if not needed
       status: 'pending' | 'failed';
     };
 
