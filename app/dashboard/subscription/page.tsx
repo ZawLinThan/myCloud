@@ -51,7 +51,7 @@ export default async function SubscriptionPage({
 
   return (
     <SubscriptionClient
-      checkoutConfirmationStatus={checkoutConfirmationStatus}
+      checkoutSessionId={checkoutSessionId}
       checkoutStatus={checkoutStatus}
       user={currentUser}
     />
