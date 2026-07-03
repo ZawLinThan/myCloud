@@ -3,6 +3,14 @@ import { getStripe } from '@/lib/billing/stripe';
 import { getCurrentUser } from '@/lib/utils/session';
 import { NextResponse } from 'next/server';
 
+const readRequestJson = async <T>(request: Request): Promise<T | null> => {
+  try {
+    return (await request.json()) as T;
+  } catch {
+    return null;
+  }
+};
+
 export async function POST(request: Request) {
   const user = await getCurrentUser();
 
@@ -13,7 +21,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const { planId } = (await request.json()) as { planId?: string };
+  const body = await readRequestJson<{ planId?: string }>(request);
+  const planId = body?.planId;
   const plan = planId ? getStoragePlan(planId) : undefined;
 
   if (!plan) {
@@ -57,7 +66,7 @@ export async function POST(request: Request) {
         uid: user.accountId,
       },
     },
-    success_url: `${origin}/dashboard/subscription?checkout=success`,
+    success_url: `${origin}/dashboard/subscription?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
   });
 
   return NextResponse.json({ url: session.url });
