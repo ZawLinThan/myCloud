@@ -47,10 +47,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: result.message }, { status: 409 });
     }
 
-    return NextResponse.json({
-      purchasedStorageGb: result.purchasedStorageGb,
-      storageLimitBytes: result.storageLimitBytes,
-    });
+    if (
+      result.status === 'confirmed' &&
+      'purchasedStorageGb' in result &&
+      'storageLimitBytes' in result
+    ) {
+      return NextResponse.json({
+        purchasedStorageGb: result.purchasedStorageGb,
+        storageLimitBytes: result.storageLimitBytes,
+      });
+    }
+
+    return NextResponse.json(
+      { message: 'Unexpected result status or missing properties.' },
+      { status: 500 }
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '';
     const isMissingFirebaseCredentials = errorMessage.includes(
