@@ -1,3 +1,4 @@
+import { confirmStoragePurchase } from '@/lib/billing/confirm-storage-purchase';
 import { getCurrentUser } from '@/lib/utils/session';
 import { redirect } from 'next/navigation';
 import SubscriptionClient from './SubscriptionClient';
@@ -23,12 +24,36 @@ export default async function SubscriptionPage({
   const checkoutSessionId = Array.isArray(params.session_id)
     ? params.session_id[0]
     : params.session_id;
+  let currentUser = user;
+  let checkoutConfirmationStatus: 'idle' | 'confirmed' | 'pending' | 'failed' =
+    'idle';
+
+  if (checkoutStatus === 'success' && checkoutSessionId) {
+    try {
+      const confirmation = await confirmStoragePurchase({
+        sessionId: checkoutSessionId,
+        user,
+      });
+
+      checkoutConfirmationStatus = confirmation.status;
+
+      if (confirmation.status === 'confirmed') {
+        currentUser = {
+          ...user,
+          purchasedStorageGb: confirmation.purchasedStorageGb,
+          storageLimitBytes: confirmation.storageLimitBytes,
+        };
+      }
+    } catch {
+      checkoutConfirmationStatus = 'failed';
+    }
+  }
 
   return (
     <SubscriptionClient
-      checkoutSessionId={checkoutSessionId}
+      checkoutConfirmationStatus={checkoutConfirmationStatus}
       checkoutStatus={checkoutStatus}
-      user={user}
+      user={currentUser}
     />
   );
 }

@@ -3,6 +3,7 @@ import './globals.css';
 import NavBar from '../components/NavBar';
 import ThemeToggle from '../components/ThemeToggle';
 import { Toaster } from 'sonner';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'MyCloud',
@@ -18,9 +19,11 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full" suppressHydrationWarning>
         <NavBar />
+        vercel deploy
         {children}
         <Toaster position="top-right" />
         <ThemeToggle />
+        <Analytics />
       </body>
     </html>
   );
