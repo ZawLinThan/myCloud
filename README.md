@@ -60,10 +60,6 @@ Users can authenticate with email/password or Google, upload files directly to R
 
 ![Dashboard on desktop](./public/screenshots/dashboard-desktop.png)
 
-### Mobile Dashboard
-
-![Dashboard on mobile](./public/screenshots/dashboard-mobile.png)
-
 ### Sign In
 
 ![Sign-in page](./public/screenshots/sign-in-desktop.png)
