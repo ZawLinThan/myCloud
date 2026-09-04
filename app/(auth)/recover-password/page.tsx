@@ -35,6 +35,7 @@ export default function RecoverPasswordPage() {
     setErrorMessage('');
     setSuccessMessage('');
 
+    console.log('Hit handleSubmit');
     const formData = new FormData(event.currentTarget);
     const email = formData.get('email')?.toString().trim();
 
@@ -49,14 +50,9 @@ export default function RecoverPasswordPage() {
 
     setIsSubmitting(true);
 
-    const methods = await fetchSignInMethodsForEmail(auth, email);
-    if (!methods.length) {
-      setErrorMessage('User not found.');
-      setIsSubmitting(false);
-      return;
-    }
-
     sendRecoveryEmail({ email });
+
+    setIsSubmitting(false);
   };
 
   return (
@@ -82,6 +78,7 @@ export default function RecoverPasswordPage() {
               name="email"
               placeholder={email ? email : 'you@example.com'}
               type="email"
+              required
             />
           </span>
         </label>
